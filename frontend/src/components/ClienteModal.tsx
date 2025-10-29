@@ -42,16 +42,16 @@ const ClienteModal: React.FC<ClienteModalProps> = ({ cliente, onSave, onClose })
 		<div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
 			<div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl animate-scaleIn">
 				{/* Header */}
-				<div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-					<h2 className="text-xl font-bold text-gray-900 dark:text-white">
-						{cliente ? 'Editar Cliente' : 'Novo Cliente'}
+				<div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 rounded-t-xl">
+					<h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+						{cliente ? '✏️ Editar Cliente' : '✨ Novo Cliente'}
 					</h2>
 					<button
 						onClick={onClose}
-						className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+						className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-all hover:scale-110 hover:rotate-90"
 						aria-label="Fechar"
 					>
-						<X size={20} className="text-gray-500 dark:text-gray-400" />
+						<X size={24} />
 					</button>
 				</div>
 
