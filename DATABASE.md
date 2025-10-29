@@ -146,9 +146,10 @@ END;
 
 -- Dados iniciais de exemplo (opcional)
 INSERT OR IGNORE INTO clientes (nome, cnpj, email, telefone, ativo, regime_tributario) VALUES
-('ACME Ltda', '12.345.678/0001-90', 'contato@acme.com', '(11) 3333-4444', 1, 'Simples Nacional'),
-('Beta Serviços', '98.765.432/0001-10', 'beta@servicos.com', '(21) 9999-0000', 1, 'Lucro Presumido'),
-('Gamma Holding', '55.444.333/0001-22', 'financeiro@gamma.com', '(31) 2222-3333', 0, 'Lucro Real');
+('ACME Ltda', '12.345.678/0001-90', 'contato@acme.com', '(11) 3333-4444', 1, 'MEI'),
+('Beta Serviços', '98.765.432/0001-10', 'beta@servicos.com', '(21) 9999-0000', 1, 'Simples Nacional'),
+('Gamma Holding', '55.444.333/0001-22', 'financeiro@gamma.com', '(31) 2222-3333', 1, 'Lucro Presumido'),
+('Delta Corporate', '66.777.888/0001-44', 'contato@delta.com', '(41) 8888-9999', 1, 'Lucro Real');
 ```
 
 ---
@@ -285,9 +286,10 @@ CREATE TABLE IF NOT EXISTS historico_alteracoes (
 
 -- Dados iniciais de exemplo
 INSERT INTO clientes (nome, cnpj, email, telefone, ativo, regime_tributario) VALUES
-('ACME Ltda', '12.345.678/0001-90', 'contato@acme.com', '(11) 3333-4444', TRUE, 'Simples Nacional'),
-('Beta Serviços', '98.765.432/0001-10', 'beta@servicos.com', '(21) 9999-0000', TRUE, 'Lucro Presumido'),
-('Gamma Holding', '55.444.333/0001-22', 'financeiro@gamma.com', '(31) 2222-3333', FALSE, 'Lucro Real')
+('ACME Ltda', '12.345.678/0001-90', 'contato@acme.com', '(11) 3333-4444', TRUE, 'MEI'),
+('Beta Serviços', '98.765.432/0001-10', 'beta@servicos.com', '(21) 9999-0000', TRUE, 'Simples Nacional'),
+('Gamma Holding', '55.444.333/0001-22', 'financeiro@gamma.com', '(31) 2222-3333', TRUE, 'Lucro Presumido'),
+('Delta Corporate', '66.777.888/0001-44', 'contato@delta.com', '(41) 8888-9999', TRUE, 'Lucro Real')
 ON DUPLICATE KEY UPDATE nome = VALUES(nome);
 ```
 
@@ -298,7 +300,7 @@ ON DUPLICATE KEY UPDATE nome = VALUES(nome);
 ### 1. Clientes
 - ✅ **CNPJ único**: Cada cliente deve ter um CNPJ único no sistema
 - ✅ **Status ativo/inativo**: Controla se o cliente está ativo para novas obrigações
-- ✅ **Regime tributário**: Define o regime fiscal do cliente (Simples Nacional, Lucro Presumido, Lucro Real)
+- ✅ **Regime tributário**: Define o regime fiscal do cliente (MEI, Simples Nacional, Lucro Presumido, Lucro Real)
 
 ### 2. Obrigações
 - ✅ **Status automático**: Muda para "ATRASADA" quando a data de vencimento passa

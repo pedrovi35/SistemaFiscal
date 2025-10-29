@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 
-type RegimeTributario = 'Simples Nacional' | 'Lucro Presumido' | 'Lucro Real';
+type RegimeTributario = 'MEI' | 'Simples Nacional' | 'Lucro Presumido' | 'Lucro Real';
 
 interface Cliente {
 	id?: string;
@@ -103,6 +103,7 @@ const ClienteModal: React.FC<ClienteModalProps> = ({ cliente, onSave, onClose })
 							className="input-primary w-full"
 							required
 						>
+							<option value="MEI">MEI (Microempreendedor Individual)</option>
 							<option value="Simples Nacional">Simples Nacional</option>
 							<option value="Lucro Presumido">Lucro Presumido</option>
 							<option value="Lucro Real">Lucro Real</option>

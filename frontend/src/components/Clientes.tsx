@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Search, Plus, Edit2, Mail, Phone, Building2 } from 'lucide-react';
 import ClienteModal from './ClienteModal';
 
-export type RegimeTributario = 'Simples Nacional' | 'Lucro Presumido' | 'Lucro Real';
+export type RegimeTributario = 'MEI' | 'Simples Nacional' | 'Lucro Presumido' | 'Lucro Real';
 
 export interface Cliente {
 	id?: string;
@@ -19,9 +19,10 @@ interface ClientesProps {
 }
 
 const mockClientes: Cliente[] = [
-	{ id: '1', nome: 'ACME Ltda', cnpj: '12.345.678/0001-90', email: 'contato@acme.com', telefone: '(11) 3333-4444', ativo: true, regimeTributario: 'Simples Nacional' },
-	{ id: '2', nome: 'Beta Serviços', cnpj: '98.765.432/0001-10', email: 'beta@servicos.com', telefone: '(21) 9999-0000', ativo: true, regimeTributario: 'Lucro Presumido' },
-	{ id: '3', nome: 'Gamma Holding', cnpj: '55.444.333/0001-22', email: 'financeiro@gamma.com', telefone: '(31) 2222-3333', ativo: false, regimeTributario: 'Lucro Real' },
+	{ id: '1', nome: 'ACME Ltda', cnpj: '12.345.678/0001-90', email: 'contato@acme.com', telefone: '(11) 3333-4444', ativo: true, regimeTributario: 'MEI' },
+	{ id: '2', nome: 'Beta Serviços', cnpj: '98.765.432/0001-10', email: 'beta@servicos.com', telefone: '(21) 9999-0000', ativo: true, regimeTributario: 'Simples Nacional' },
+	{ id: '3', nome: 'Gamma Holding', cnpj: '55.444.333/0001-22', email: 'financeiro@gamma.com', telefone: '(31) 2222-3333', ativo: true, regimeTributario: 'Lucro Presumido' },
+	{ id: '4', nome: 'Delta Corporate', cnpj: '66.777.888/0001-44', email: 'contato@delta.com', telefone: '(41) 8888-9999', ativo: true, regimeTributario: 'Lucro Real' },
 ];
 
 const Clientes: React.FC<ClientesProps> = ({ clientes: propClientes = mockClientes }) => {
@@ -104,6 +105,7 @@ const Clientes: React.FC<ClientesProps> = ({ clientes: propClientes = mockClient
 								<td className="px-4 py-3">
 									{c.regimeTributario && (
 										<span className={`badge ${
+											c.regimeTributario === 'MEI' ? 'status-pendente' :
 											c.regimeTributario === 'Simples Nacional' ? 'badge-federal' :
 											c.regimeTributario === 'Lucro Presumido' ? 'badge-estadual' :
 											'badge-municipal'
