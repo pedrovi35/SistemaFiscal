@@ -27,13 +27,13 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon: Icon, trend, 
   };
 
   return (
-    <div className="card p-6 hover:shadow-xl transition-all duration-300 cursor-pointer group animate-fadeIn">
+    <div className="card p-3 sm:p-4 lg:p-6 hover:shadow-xl transition-all duration-300 cursor-pointer group animate-fadeIn">
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <p className="text-sm text-gray-600 dark:text-gray-400 font-medium mb-1">
+          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 font-medium mb-1">
             {title}
           </p>
-          <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-2">
             {value}
           </h3>
           {trend !== undefined && (

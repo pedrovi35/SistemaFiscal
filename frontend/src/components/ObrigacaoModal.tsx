@@ -77,7 +77,7 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
   return (
     <div className="modal-backdrop animate-fadeIn" onClick={onClose}>
       <div 
-        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto animate-scaleIn"
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-2xl w-full mx-2 sm:mx-4 max-h-[90vh] overflow-y-auto animate-scaleIn"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

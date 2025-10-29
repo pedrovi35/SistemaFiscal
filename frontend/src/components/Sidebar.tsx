@@ -192,10 +192,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside
       className={`
-        fixed left-0 top-16 h-[calc(100vh-4rem)] z-30
+        fixed left-0 top-14 sm:top-16 h-[calc(100vh-3.5rem)] sm:h-[calc(100vh-4rem)] z-30
         bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800
         transition-all duration-300 ease-in-out
-        ${isCollapsed ? 'w-20' : 'w-72'}
+        ${isCollapsed ? 'w-20' : 'w-64 sm:w-72'}
         overflow-hidden flex flex-col
         shadow-lg
         ${isCollapsed ? '-translate-x-full lg:translate-x-0 lg:w-20' : 'translate-x-0'}

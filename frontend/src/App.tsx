@@ -295,7 +295,7 @@ function AppContent() {
       <div
         className={`
           flex-1 transition-all duration-300 ease-in-out
-          ${sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-72'}
+          ${sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64 xl:ml-72'}
           max-w-full ml-0
         `}
       >
@@ -307,9 +307,9 @@ function AppContent() {
         />
 
         {/* Main Content */}
-        <main className="px-4 sm:px-6 lg:px-8 py-8">
+        <main className="px-2 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8 animate-fadeIn">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8 animate-fadeIn">
             <StatsCard title="Total" value={stats.total} icon={Calendar} color="blue" />
             <StatsCard title="Pendentes" value={stats.pendentes} icon={Clock} color="yellow" />
             <StatsCard title="Concluídas" value={stats.concluidas} icon={CheckCircle2} color="green" />

@@ -94,8 +94,8 @@ const Parcelamentos: React.FC = () => {
 					);
 				})}
 			</div>
-			<div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
-				<table className="w-full text-sm">
+			<div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700 -mx-2 sm:mx-0">
+				<table className="w-full text-xs sm:text-sm">
 					<thead className="bg-gray-50 dark:bg-gray-800">
 						<tr className="text-left text-gray-600 dark:text-gray-300">
 							<th className="px-4 py-3">Título</th>

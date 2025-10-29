@@ -12,8 +12,8 @@ const Header: React.FC<HeaderProps> = ({ onNovaObrigacao, onToggleSidebar, onNav
 
   return (
     <header className="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+        <div className="flex items-center justify-between h-14 sm:h-16">
           {/* Logo e Título */}
           <div className="flex items-center gap-4">
             {/* Menu Button - Mobile Only */}
@@ -29,15 +29,15 @@ const Header: React.FC<HeaderProps> = ({ onNovaObrigacao, onToggleSidebar, onNav
             
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl blur opacity-50"></div>
-              <div className="relative bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-xl">
-                <Calendar className="text-white" size={24} />
+              <div className="relative bg-gradient-to-r from-blue-600 to-purple-600 p-1.5 sm:p-2 rounded-xl">
+                <Calendar className="text-white" size={18} />
               </div>
             </div>
-            <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <div className="hidden sm:block">
+              <h1 className="text-base sm:text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 Sistema Fiscal
               </h1>
-              <p className="text-xs text-gray-600 dark:text-gray-400">
+              <p className="text-xs text-gray-600 dark:text-gray-400 hidden md:block">
                 Gestão Inteligente de Obrigações
               </p>
             </div>
