@@ -1,0 +1,88 @@
+import axios from 'axios';
+import { Obrigacao, FiltroObrigacoes, Feriado, HistoricoAlteracao } from '../types';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
+const api = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
+// Interceptor para tratamento de erros
+api.interceptors.response.use(
+  response => response,
+  error => {
+    console.error('Erro na API:', error);
+    return Promise.reject(error);
+  }
+);
+
+// ==================== OBRIGAÇÕES ====================
+
+export const obrigacoesApi = {
+  listarTodas: async (): Promise<Obrigacao[]> => {
+    const response = await api.get('/obrigacoes');
+    return response.data;
+  },
+
+  buscarPorId: async (id: string): Promise<Obrigacao> => {
+    const response = await api.get(`/obrigacoes/${id}`);
+    return response.data;
+  },
+
+  filtrar: async (filtro: FiltroObrigacoes): Promise<Obrigacao[]> => {
+    const params = new URLSearchParams();
+    
+    Object.entries(filtro).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        params.append(key, String(value));
+      }
+    });
+
+    const response = await api.get(`/obrigacoes/filtrar?${params.toString()}`);
+    return response.data;
+  },
+
+  criar: async (obrigacao: Partial<Obrigacao>): Promise<Obrigacao> => {
+    const response = await api.post('/obrigacoes', obrigacao);
+    return response.data;
+  },
+
+  atualizar: async (id: string, dados: Partial<Obrigacao>): Promise<Obrigacao> => {
+    const response = await api.put(`/obrigacoes/${id}`, dados);
+    return response.data;
+  },
+
+  deletar: async (id: string): Promise<void> => {
+    await api.delete(`/obrigacoes/${id}`);
+  },
+
+  buscarHistorico: async (id: string): Promise<HistoricoAlteracao[]> => {
+    const response = await api.get(`/obrigacoes/${id}/historico`);
+    return response.data;
+  },
+
+  gerarProxima: async (id: string): Promise<Obrigacao> => {
+    const response = await api.post(`/obrigacoes/${id}/gerar-proxima`);
+    return response.data;
+  }
+};
+
+// ==================== FERIADOS ====================
+
+export const feriadosApi = {
+  listarPorAno: async (ano: number): Promise<Feriado[]> => {
+    const response = await api.get(`/feriados/${ano}`);
+    return response.data;
+  },
+
+  ajustarData: async (data: string): Promise<{ dataOriginal: string; dataAjustada: string; ajustada: boolean }> => {
+    const response = await api.post('/feriados/ajustar-data', { data });
+    return response.data;
+  }
+};
+
+export default api;
+
