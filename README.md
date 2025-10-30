@@ -88,10 +88,12 @@
 ![Express](https://img.shields.io/badge/Express-4.18.2-000000?style=for-the-badge&logo=express)
 ![Socket.io](https://img.shields.io/badge/Socket.io-4.6.1-010101?style=for-the-badge&logo=socket.io)
 ![SQLite](https://img.shields.io/badge/SQLite-3-003b57?style=for-the-badge&logo=sqlite)
+![MySQL](https://img.shields.io/badge/MySQL-5.7+-4479A1?style=for-the-badge&logo=mysql)
+![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
 
 - Node.js + Express + TypeScript
 - Socket.io para WebSocket
-- SQLite para persistência
+- SQLite para desenvolvimento / MySQL ou Supabase para produção
 - Node-cache para otimização
 - Integração com BrasilAPI (feriados)
 
@@ -208,6 +210,10 @@ O sistema inicia em **modo escuro** por padrão. Para alternar entre claro/escur
 - 📝 [CHANGELOG_UI.md](CHANGELOG_UI.md) - Histórico de mudanças
 - ⚡ [COMANDOS.md](COMANDOS.md) - Comandos rápidos
 - 💿 [INSTALL.md](INSTALL.md) - Guia de instalação detalhado
+- 🗄️ [DATABASE.md](DATABASE.md) - Documentação do banco de dados
+- 💾 [PERSISTENCIA_DADOS.md](PERSISTENCIA_DADOS.md) - Como funcionam backups e persistência
+- 🐬 [MYSQL_SETUP.md](MYSQL_SETUP.md) - Guia de configuração MySQL
+- 🐘 [SUPABASE_SETUP.md](SUPABASE_SETUP.md) - Guia de configuração Supabase
 
 ---
 

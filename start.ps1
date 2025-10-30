@@ -28,7 +28,7 @@ if (-not (Test-Path "frontend")) {
 # Iniciar Backend
 Write-Host ""
 Write-Host "Iniciando backend..." -ForegroundColor Yellow
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host 'Backend - Sistema Fiscal' -ForegroundColor Green; cd backend; npm run dev"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host 'Backend - Sistema Fiscal' -ForegroundColor Green; cd backend; npm.cmd run dev"
 
 # Aguardar
 Write-Host "Aguardando backend inicializar..." -ForegroundColor Yellow
@@ -37,7 +37,7 @@ Start-Sleep -Seconds 5
 # Iniciar Frontend
 Write-Host ""
 Write-Host "Iniciando frontend..." -ForegroundColor Yellow
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host 'Frontend - Sistema Fiscal' -ForegroundColor Green; cd frontend; npm run dev"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "Write-Host 'Frontend - Sistema Fiscal' -ForegroundColor Green; cd frontend; npm.cmd run dev"
 
 # Aguardar
 Start-Sleep -Seconds 2

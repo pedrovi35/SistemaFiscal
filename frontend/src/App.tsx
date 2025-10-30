@@ -33,6 +33,14 @@ const mockClientes: Cliente[] = [
 ];
 
 function AppContent() {
+  interface NotificacaoCentro {
+    id: string;
+    titulo: string;
+    mensagem: string;
+    tipo: 'info' | 'sucesso' | 'aviso' | 'erro';
+    lida: boolean;
+    timestamp: Date;
+  }
   const [obrigacoes, setObrigacoes] = useState<Obrigacao[]>([]);
   const [obrigacoesFiltradas, setObrigacoesFiltradas] = useState<Obrigacao[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>(mockClientes);
@@ -42,6 +50,8 @@ function AppContent() {
   const [obrigacaoSelecionada, setObrigacaoSelecionada] = useState<Obrigacao | undefined>();
   const [dataInicial, setDataInicial] = useState<string>('');
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
+  const [notificacoesCentro, setNotificacoesCentro] = useState<NotificacaoCentro[]>([]);
+  const [notificacoesCentroIgnoradas, setNotificacoesCentroIgnoradas] = useState<Set<string>>(new Set());
   const [calculadoraAberta, setCalculadoraAberta] = useState(false);
   const [exportarAberto, setExportarAberto] = useState(false);
   const [importarAberto, setImportarAberto] = useState(false);
@@ -136,6 +146,81 @@ function AppContent() {
   const removerNotificacao = (id: string) => {
     setNotificacoes(prev => prev.filter(n => n.id !== id));
   };
+
+  // Centro de Notificações - handlers
+  const marcarNotificacaoCentroComoLida = (id: string) => {
+    setNotificacoesCentro(prev => prev.map(n => n.id === id ? { ...n, lida: true } : n));
+  };
+
+  const removerNotificacaoCentro = (id: string) => {
+    setNotificacoesCentro(prev => prev.filter(n => n.id !== id));
+    setNotificacoesCentroIgnoradas(prev => new Set([...Array.from(prev), id]));
+  };
+
+  const limparTodasNotificacoesCentro = () => {
+    setNotificacoesCentro(prev => {
+      const ids = prev.map(n => n.id);
+      setNotificacoesCentroIgnoradas(prevSet => new Set([...Array.from(prevSet), ...ids]));
+      return [];
+    });
+  };
+
+  // Recalcular notificações de prazo (só vencimentos) a partir das obrigações
+  useEffect(() => {
+    const hoje = new Date();
+    const hojeMid = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    const MS_DIA = 24 * 60 * 60 * 1000;
+
+    // Map atual para preservar estado de leitura
+    const lidasAtual: Record<string, boolean> = Object.fromEntries(
+      notificacoesCentro.map(n => [n.id, n.lida])
+    );
+
+    const novas: NotificacaoCentro[] = obrigacoes
+      .filter(o => o.status !== StatusObrigacao.CONCLUIDA && o.status !== StatusObrigacao.CANCELADA)
+      .map(o => {
+        const idBase = `prazo-${o.id}`;
+        const dt = new Date(o.dataVencimento);
+        if (isNaN(dt.getTime())) return null;
+        const dtMid = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+        const diffDias = Math.floor((dtMid.getTime() - hojeMid.getTime()) / MS_DIA);
+
+        let titulo = '';
+        let mensagem = '';
+        let tipo: NotificacaoCentro['tipo'] = 'info';
+
+        if (diffDias < 0) {
+          tipo = 'erro';
+          titulo = 'Obrigação atrasada';
+          mensagem = `${o.titulo || 'Obrigação'} venceu em ${dtMid.toLocaleDateString()}`;
+        } else if (diffDias === 0) {
+          tipo = 'aviso';
+          titulo = 'Vence hoje';
+          mensagem = `${o.titulo || 'Obrigação'} vence hoje (${dtMid.toLocaleDateString()})`;
+        } else if (diffDias <= 7) {
+          tipo = 'aviso';
+          titulo = 'Vencimento próximo';
+          mensagem = `${o.titulo || 'Obrigação'} vence em ${diffDias} dia(s) (${dtMid.toLocaleDateString()})`;
+        } else {
+          return null; // Ignorar vencimentos além de 7 dias
+        }
+
+        const id = idBase;
+        if (notificacoesCentroIgnoradas.has(id)) return null; // ignorada pelo usuário
+
+        return {
+          id,
+          titulo,
+          mensagem,
+          tipo,
+          lida: lidasAtual[id] || false,
+          timestamp: new Date()
+        } as NotificacaoCentro;
+      })
+      .filter(Boolean) as NotificacaoCentro[];
+
+    setNotificacoesCentro(novas);
+  }, [obrigacoes]);
 
   // Abrir modal para criar
   const abrirModalCriar = (data?: string) => {
@@ -304,6 +389,12 @@ function AppContent() {
           onNovaObrigacao={() => abrirModalCriar()}
           onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
           onNavigate={handleNavigate}
+          centroNotificacoesProps={{
+            notificacoes: notificacoesCentro,
+            onMarcarLida: marcarNotificacaoCentroComoLida,
+            onRemover: removerNotificacaoCentro,
+            onLimparTodas: limparTodasNotificacoesCentro
+          }}
         />
 
         {/* Main Content */}

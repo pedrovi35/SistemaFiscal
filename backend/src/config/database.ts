@@ -2,31 +2,30 @@ import sqlite3 from 'sqlite3';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { promisify } from 'util';
+import { Pool } from 'pg';
 
 const DB_DIR = join(__dirname, '../../database');
 const DB_PATH = join(DB_DIR, 'fiscal.db');
 
-// Criar diretório se não existir
+// Modo e cliente ativo de banco de dados
+let isPostgres = false;
+let pgPool: Pool | null = null;
+
+// Cliente SQLite (inicializado por padrão)
 if (!existsSync(DB_DIR)) {
   mkdirSync(DB_DIR, { recursive: true });
 }
-
-// Criar conexão com banco
-const db = new sqlite3.Database(DB_PATH, (err) => {
+const sqliteDb = new sqlite3.Database(DB_PATH, (err) => {
   if (err) {
-    console.error('❌ Erro ao conectar ao banco de dados:', err);
+    console.error('❌ Erro ao conectar ao banco de dados SQLite:', err);
   } else {
     console.log('✅ Conectado ao banco de dados SQLite');
   }
 });
-
-// Converter métodos para promessas
-const dbExec = promisify(db.exec.bind(db));
-
-// Wrapper para db.get que aceita parâmetros
-const dbGet = (sql: string, params: any[] = []): Promise<any> => {
+const sqliteExec = promisify(sqliteDb.exec.bind(sqliteDb));
+const sqliteGet = (sql: string, params: any[] = []): Promise<any> => {
   return new Promise((resolve, reject) => {
-    db.get(sql, params, (err, row) => {
+    sqliteDb.get(sql, params, (err, row) => {
       if (err) {
         reject(err);
       } else {
@@ -35,11 +34,9 @@ const dbGet = (sql: string, params: any[] = []): Promise<any> => {
     });
   });
 };
-
-// Wrapper para db.all que aceita parâmetros
-const dbAll = (sql: string, params: any[] = []): Promise<any[]> => {
+const sqliteAll = (sql: string, params: any[] = []): Promise<any[]> => {
   return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => {
+    sqliteDb.all(sql, params, (err, rows) => {
       if (err) {
         reject(err);
       } else {
@@ -48,11 +45,9 @@ const dbAll = (sql: string, params: any[] = []): Promise<any[]> => {
     });
   });
 };
-
-// Wrapper para db.run que retorna informações sobre mudanças
-const dbRun = (sql: string, params: any[] = []): Promise<{ changes: number; lastID: number }> => {
+const sqliteRun = (sql: string, params: any[] = []): Promise<{ changes: number; lastID: number }> => {
   return new Promise((resolve, reject) => {
-    db.run(sql, params, function(err) {
+    sqliteDb.run(sql, params, function(err) {
       if (err) {
         reject(err);
       } else {
@@ -61,15 +56,74 @@ const dbRun = (sql: string, params: any[] = []): Promise<{ changes: number; last
     });
   });
 };
+sqliteDb.run('PRAGMA foreign_keys = ON');
 
-// Habilitar foreign keys
-db.run('PRAGMA foreign_keys = ON');
+// Adaptadores atuais (podem ser sobrescritos quando Postgres estiver ativo)
+let currentExec: (sql: string) => Promise<void> = sqliteExec as any;
+let currentGet: (sql: string, params?: any[]) => Promise<any> = sqliteGet;
+let currentAll: (sql: string, params?: any[]) => Promise<any[]> = sqliteAll;
+let currentRun: (sql: string, params?: any[]) => Promise<{ changes: number; lastID: number }> = sqliteRun;
+
+// Utilitário: converte placeholders `?` para `$1, $2, ...` do Postgres
+function toPgParams(sql: string, params: any[]): { text: string; values: any[] } {
+  let index = 0;
+  const text = sql.replace(/\?/g, () => `$${++index}`);
+  return { text, values: params };
+}
 
 // Criar tabelas
 export async function initializeDatabase() {
   try {
-    // Tabela de obrigações
-    await dbExec(`
+    // Ativar Postgres (Supabase) se variável estiver definida
+    if (process.env.DATABASE_URL && process.env.DATABASE_URL.startsWith('postgres')) {
+      try {
+        isPostgres = true;
+        pgPool = new Pool({
+          connectionString: process.env.DATABASE_URL,
+          ssl: { rejectUnauthorized: false }
+        });
+
+        // Substituir adaptadores para usar Postgres
+        currentExec = async (sql: string) => {
+          await (pgPool as Pool).query(sql);
+        };
+        currentGet = async (sql: string, params: any[] = []) => {
+          const { text, values } = toPgParams(sql, params);
+          const res = await (pgPool as Pool).query(text, values);
+          return res.rows[0];
+        };
+        currentAll = async (sql: string, params: any[] = []) => {
+          const { text, values } = toPgParams(sql, params);
+          const res = await (pgPool as Pool).query(text, values);
+          return res.rows as any[];
+        };
+        currentRun = async (sql: string, params: any[] = []) => {
+          const { text, values } = toPgParams(sql, params);
+          const res: any = await (pgPool as Pool).query(text, values);
+          return { changes: res.rowCount ?? 0, lastID: 0 };
+        };
+
+        // Testar conexão
+        const test = await (pgPool as Pool).query('select 1 as ok');
+        if (test.rows?.[0]?.ok === 1) {
+          console.log('✅ Conectado ao PostgreSQL (Supabase)');
+        } else {
+          console.warn('⚠️ Conexão ao PostgreSQL efetuada, mas teste não retornou como esperado.');
+        }
+
+        console.log('ℹ️ Modo Postgres ativo: criação de tabelas via SQL externo (database_supabase.sql)');
+        return;
+      } catch (pgError) {
+        // Falha ao conectar no Postgres: voltar para SQLite
+        console.warn('⚠️ Falha ao conectar ao PostgreSQL (Supabase). Voltando para SQLite. Detalhe:', pgError);
+        isPostgres = false;
+        pgPool = null;
+        // segue para criação das tabelas SQLite abaixo
+      }
+    }
+
+    // Modo SQLite (padrão): criar tabelas
+    await currentExec(`
       CREATE TABLE IF NOT EXISTS obrigacoes (
         id TEXT PRIMARY KEY,
         titulo TEXT NOT NULL,
@@ -90,7 +144,7 @@ export async function initializeDatabase() {
     `);
 
     // Tabela de recorrência
-    await dbExec(`
+    await currentExec(`
       CREATE TABLE IF NOT EXISTS recorrencias (
         obrigacaoId TEXT PRIMARY KEY,
         tipo TEXT NOT NULL,
@@ -103,7 +157,7 @@ export async function initializeDatabase() {
     `);
 
     // Tabela de histórico
-    await dbExec(`
+    await currentExec(`
       CREATE TABLE IF NOT EXISTS historico (
         id TEXT PRIMARY KEY,
         obrigacaoId TEXT NOT NULL,
@@ -116,7 +170,7 @@ export async function initializeDatabase() {
     `);
 
     // Tabela de feriados (cache)
-    await dbExec(`
+    await currentExec(`
       CREATE TABLE IF NOT EXISTS feriados (
         data TEXT PRIMARY KEY,
         nome TEXT NOT NULL,
@@ -125,7 +179,7 @@ export async function initializeDatabase() {
     `);
 
     // Índices para melhor performance
-    await dbExec(`
+    await currentExec(`
       CREATE INDEX IF NOT EXISTS idx_obrigacoes_data ON obrigacoes(dataVencimento);
       CREATE INDEX IF NOT EXISTS idx_obrigacoes_cliente ON obrigacoes(cliente);
       CREATE INDEX IF NOT EXISTS idx_obrigacoes_responsavel ON obrigacoes(responsavel);
@@ -139,12 +193,12 @@ export async function initializeDatabase() {
   }
 }
 
-// Exportar db e métodos promisificados
+// Exportar adaptadores compatíveis
 export default {
-  db,
-  run: dbRun,
-  get: dbGet,
-  all: dbAll,
-  exec: dbExec
+  db: sqliteDb,
+  run: (sql: string, params: any[] = []) => currentRun(sql, params),
+  get: (sql: string, params: any[] = []) => currentGet(sql, params),
+  all: (sql: string, params: any[] = []) => currentAll(sql, params),
+  exec: (sql: string) => currentExec(sql)
 };
 

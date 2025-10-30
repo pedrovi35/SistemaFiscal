@@ -1,6 +1,6 @@
 # 🗄️ Banco de Dados - Sistema Fiscal
 
-Este documento contém os scripts SQL para criação do banco de dados do Sistema Fiscal, suportando **SQLite** (desenvolvimento) e **MySQL** (produção).
+Este documento contém os scripts SQL para criação do banco de dados do Sistema Fiscal, suportando **SQLite** (desenvolvimento), **MySQL** e **Supabase/PostgreSQL** (produção).
 
 ---
 
@@ -8,6 +8,11 @@ Este documento contém os scripts SQL para criação do banco de dados do Sistem
 
 - [SQLite (Desenvolvimento)](#sqlite-desenvolvimento)
 - [MySQL (Produção)](#mysql-produção)
+- [Supabase/PostgreSQL (Produção em Nuvem)](#supabasepostgresql-produção-em-nuvem)
+- ⚡ [Script MySQL Completo](database_mysql.sql) - Para servidores MySQL
+- ⚡ [Script Supabase Completo](database_supabase.sql) - Para Supabase/PostgreSQL
+- 🐬 [Guia de Configuração MySQL](MYSQL_SETUP.md) - Configuração passo a passo
+- 🐘 [Guia de Configuração Supabase](SUPABASE_SETUP.md) - Configuração passo a passo
 - [Regras de Negócio](#regras-de-negócio)
 - [Configuração do Backend](#configuração-do-backend)
 - [Migração de Dados](#migração-de-dados)
@@ -156,7 +161,11 @@ INSERT OR IGNORE INTO clientes (nome, cnpj, email, telefone, ativo, regime_tribu
 
 ## 🐬 MySQL (Produção)
 
-### Script de Criação
+> **💡 Recomendação**: Use o arquivo [`database_mysql.sql`](database_mysql.sql) que contém o script completo e otimizado com views, procedures, triggers e eventos!
+
+> **📖 Guia Completo**: Consulte o [MYSQL_SETUP.md](MYSQL_SETUP.md) para instruções detalhadas de instalação.
+
+### Script de Criação (Resumido)
 
 ```sql
 -- ========================================
@@ -292,6 +301,75 @@ INSERT INTO clientes (nome, cnpj, email, telefone, ativo, regime_tributario) VAL
 ('Delta Corporate', '66.777.888/0001-44', 'contato@delta.com', '(41) 8888-9999', TRUE, 'Lucro Real')
 ON DUPLICATE KEY UPDATE nome = VALUES(nome);
 ```
+
+---
+
+## 🐘 Supabase/PostgreSQL (Produção em Nuvem)
+
+> **💡 Recomendação**: Use o arquivo [`database_supabase.sql`](database_supabase.sql) que contém o script completo e otimizado com views, functions, triggers e extensões!
+
+> **📖 Guia Completo**: Consulte o [SUPABASE_SETUP.md](SUPABASE_SETUP.md) para instruções detalhadas de instalação.
+
+### Vantagens do Supabase
+
+- 🚀 **Deploy Instantâneo**: Banco hospedado na nuvem
+- 🔄 **Real-time**: WebSockets integrados nativamente
+- 🔐 **Autenticação**: Sistema completo de autenticação
+- 📊 **Dashboard**: Interface web para gerenciar dados
+- 💾 **Backup Automático**: Backups diários automáticos
+- 🌍 **Global**: CDN global para performance
+- 📈 **Escalável**: Adapta-se ao crescimento do projeto
+- 🆓 **Free Tier**: Plano gratuito generoso
+
+### Script de Criação (Resumido)
+
+```sql
+-- ========================================
+-- Sistema Fiscal - PostgreSQL/Supabase Schema
+-- ========================================
+
+-- Habilitar extensões
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pg_trgm";
+
+-- Tabela de Clientes
+CREATE TABLE IF NOT EXISTS clientes (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL,
+    cnpj VARCHAR(18) UNIQUE NOT NULL,
+    -- ... outros campos
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tipos ENUM para PostgreSQL
+CREATE TYPE tipo_obrigacao AS ENUM ('FEDERAL', 'ESTADUAL', 'MUNICIPAL', 'TRABALHISTA', 'PREVIDENCIARIA', 'OUTRO');
+CREATE TYPE status_obrigacao AS ENUM ('PENDENTE', 'EM_ANDAMENTO', 'CONCLUIDA', 'ATRASADA', 'CANCELADA');
+
+-- Tabela de Obrigações
+CREATE TABLE IF NOT EXISTS obrigacoes (
+    id SERIAL PRIMARY KEY,
+    titulo VARCHAR(255) NOT NULL,
+    tipo tipo_obrigacao NOT NULL,
+    status status_obrigacao NOT NULL DEFAULT 'PENDENTE',
+    -- ... outros campos
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE SET NULL
+);
+
+-- Views, Functions e Triggers
+-- ... (ver arquivo completo database_supabase.sql)
+```
+
+### Diferenças do MySQL
+
+| Recurso | MySQL | PostgreSQL/Supabase |
+|---------|-------|---------------------|
+| ID Auto-increment | `AUTO_INCREMENT` | `SERIAL` |
+| ENUM | `ENUM('A', 'B')` | `CREATE TYPE` |
+| Upsert | `ON DUPLICATE KEY UPDATE` | `ON CONFLICT DO UPDATE` |
+| Stored Procedures | `DELIMITER //` | `CREATE FUNCTION` |
+| Triggers | Sintaxe específica | Pl/pgSQL |
+| Show Tables | `SHOW TABLES` | `SELECT FROM information_schema` |
 
 ---
 

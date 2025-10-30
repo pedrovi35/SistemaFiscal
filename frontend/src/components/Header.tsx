@@ -1,14 +1,28 @@
 import React from 'react';
-import { Calendar, Plus, TrendingUp, Bell, Menu } from 'lucide-react';
+import { Calendar, Plus, TrendingUp, Menu } from 'lucide-react';
 import MenuDropdown from './MenuDropdown';
+import CentroNotificacoes from './CentroNotificacoes';
 
 interface HeaderProps {
   onNovaObrigacao: () => void;
   onToggleSidebar?: () => void;
   onNavigate?: (tab: string) => void;
+  centroNotificacoesProps?: {
+    notificacoes: {
+      id: string;
+      titulo: string;
+      mensagem: string;
+      tipo: 'info' | 'sucesso' | 'aviso' | 'erro';
+      lida: boolean;
+      timestamp: Date;
+    }[];
+    onMarcarLida: (id: string) => void;
+    onRemover: (id: string) => void;
+    onLimparTodas: () => void;
+  };
 }
 
-const Header: React.FC<HeaderProps> = ({ onNovaObrigacao, onToggleSidebar, onNavigate }) => {
+const Header: React.FC<HeaderProps> = ({ onNovaObrigacao, onToggleSidebar, onNavigate, centroNotificacoesProps }) => {
 
   return (
     <header className="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800 shadow-sm">
@@ -54,13 +68,14 @@ const Header: React.FC<HeaderProps> = ({ onNovaObrigacao, onToggleSidebar, onNav
             </div>
 
             {/* Notifications */}
-            <button
-              className="relative p-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all hover:scale-110 group"
-              title="Notificações"
-            >
-              <Bell size={20} className="text-gray-600 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" />
-              <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-lg shadow-red-500/50"></span>
-            </button>
+            {centroNotificacoesProps ? (
+              <CentroNotificacoes
+                notificacoes={centroNotificacoesProps.notificacoes}
+                onMarcarLida={centroNotificacoesProps.onMarcarLida}
+                onRemover={centroNotificacoesProps.onRemover}
+                onLimparTodas={centroNotificacoesProps.onLimparTodas}
+              />
+            ) : null}
 
             {/* Nova Obrigação Button */}
             <button

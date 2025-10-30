@@ -180,17 +180,40 @@ export class ObrigacaoModel {
 
   // Atualizar recorrência
   private async atualizarRecorrencia(obrigacaoId: string, recorrencia: Recorrencia) {
-    await db.run(`
-      INSERT OR REPLACE INTO recorrencias (obrigacaoId, tipo, intervalo, diaDoMes, dataFim, proximaOcorrencia)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `, [
-      obrigacaoId,
-      recorrencia.tipo,
-      recorrencia.intervalo || null,
-      recorrencia.diaDoMes || null,
-      recorrencia.dataFim || null,
-      recorrencia.proximaOcorrencia || null
-    ]);
+    const isPostgres = !!process.env.DATABASE_URL && process.env.DATABASE_URL.startsWith('postgres');
+    if (isPostgres) {
+      // Postgres: usar UPSERT com ON CONFLICT
+      await db.run(`
+        INSERT INTO recorrencias (obrigacaoId, tipo, intervalo, diaDoMes, dataFim, proximaOcorrencia)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT (obrigacaoId) DO UPDATE SET
+          tipo = EXCLUDED.tipo,
+          intervalo = EXCLUDED.intervalo,
+          diaDoMes = EXCLUDED.diaDoMes,
+          dataFim = EXCLUDED.dataFim,
+          proximaOcorrencia = EXCLUDED.proximaOcorrencia
+      `, [
+        obrigacaoId,
+        recorrencia.tipo,
+        recorrencia.intervalo || null,
+        recorrencia.diaDoMes || null,
+        recorrencia.dataFim || null,
+        recorrencia.proximaOcorrencia || null
+      ]);
+    } else {
+      // SQLite: usar INSERT OR REPLACE
+      await db.run(`
+        INSERT OR REPLACE INTO recorrencias (obrigacaoId, tipo, intervalo, diaDoMes, dataFim, proximaOcorrencia)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `, [
+        obrigacaoId,
+        recorrencia.tipo,
+        recorrencia.intervalo || null,
+        recorrencia.diaDoMes || null,
+        recorrencia.dataFim || null,
+        recorrencia.proximaOcorrencia || null
+      ]);
+    }
   }
 
   // Buscar recorrência
