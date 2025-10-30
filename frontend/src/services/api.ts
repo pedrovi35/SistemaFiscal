@@ -14,8 +14,12 @@ const api = axios.create({
 api.interceptors.response.use(
   response => response,
   error => {
-    console.error('Erro na API:', error);
-    return Promise.reject(error);
+    const status = error?.response?.status;
+    const backendMessage = error?.response?.data?.erro || error?.response?.data?.message;
+    const message = backendMessage || error?.message || 'Erro na comunicação com a API';
+    const normalized = { ...error, message, status };
+    console.error('Erro na API:', normalized);
+    return Promise.reject(normalized);
   }
 );
 
@@ -78,8 +82,11 @@ export const feriadosApi = {
     return response.data;
   },
 
-  ajustarData: async (data: string): Promise<{ dataOriginal: string; dataAjustada: string; ajustada: boolean }> => {
-    const response = await api.post('/feriados/ajustar-data', { data });
+  ajustarData: async (
+    data: string,
+    direcao: 'proximo' | 'anterior' = 'proximo'
+  ): Promise<{ dataOriginal: string; dataAjustada: string; ajustada: boolean }> => {
+    const response = await api.post('/feriados/ajustar-data', { data, direcao });
     return response.data;
   }
 };

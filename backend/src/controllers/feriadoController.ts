@@ -23,15 +23,20 @@ export class FeriadoController {
   // POST /api/feriados/ajustar-data
   async ajustarData(req: Request, res: Response): Promise<void> {
     try {
-      const { data } = req.body;
+      const { data, direcao } = req.body as { data?: string; direcao?: 'proximo' | 'anterior' };
 
       if (!data) {
         res.status(400).json({ erro: 'Data é obrigatória' });
         return;
       }
 
+      if (direcao && direcao !== 'proximo' && direcao !== 'anterior') {
+        res.status(400).json({ erro: 'Direção inválida. Use "proximo" ou "anterior"' });
+        return;
+      }
+
       const dataOriginal = new Date(data);
-      const dataAjustada = await feriadoService.ajustarParaDiaUtil(dataOriginal);
+      const dataAjustada = await feriadoService.ajustarParaDiaUtil(dataOriginal, direcao || 'proximo');
 
       res.json({
         dataOriginal: dataOriginal.toISOString().split('T')[0],

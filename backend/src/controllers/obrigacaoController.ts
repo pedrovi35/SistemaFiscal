@@ -77,7 +77,8 @@ export class ObrigacaoController {
       const dataVencimentoOriginal = dataVencimento;
 
       if (dados.ajusteDataUtil !== false) {
-        dataVencimento = await feriadoService.ajustarParaDiaUtil(dataVencimento);
+        const direcao: 'proximo' | 'anterior' = (dados.preferenciaAjuste === 'anterior') ? 'anterior' : 'proximo';
+        dataVencimento = await feriadoService.ajustarParaDiaUtil(dataVencimento, direcao);
       }
 
       const obrigacao = await obrigacaoModel.criar({
@@ -128,7 +129,8 @@ export class ObrigacaoController {
       // Ajustar data de vencimento se alterada
       if (dados.dataVencimento && dados.ajusteDataUtil !== false) {
         let dataVencimento = parseISO(dados.dataVencimento);
-        dataVencimento = await feriadoService.ajustarParaDiaUtil(dataVencimento);
+        const direcao: 'proximo' | 'anterior' = (dados.preferenciaAjuste === 'anterior') ? 'anterior' : 'proximo';
+        dataVencimento = await feriadoService.ajustarParaDiaUtil(dataVencimento, direcao);
         dados.dataVencimento = dataVencimento.toISOString().split('T')[0];
       }
 

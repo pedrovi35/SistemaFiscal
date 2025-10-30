@@ -66,19 +66,25 @@ export class FeriadoService {
     return feriados.some(f => f.data === dataStr);
   }
 
-  // Ajustar data para próximo dia útil
-  async ajustarParaDiaUtil(data: Date): Promise<Date> {
+  // Ajustar data para dia útil anterior ou próximo
+  async ajustarParaDiaUtil(
+    data: Date,
+    direcao: 'proximo' | 'anterior' = 'proximo'
+  ): Promise<Date> {
     let dataAjustada = data;
-    const ano = dataAjustada.getFullYear();
-    const feriados = await this.buscarFeriadosNacionais(ano);
+    let anoReferencia = dataAjustada.getFullYear();
+    const feriados = await this.buscarFeriadosNacionais(anoReferencia);
 
-    // Verificar até encontrar um dia útil
+    const passo = direcao === 'anterior' ? -1 : 1;
+
+    // Se já é não útil, mover conforme preferência até achar dia útil
     while (this.isNaoUtil(dataAjustada, feriados)) {
-      dataAjustada = addDays(dataAjustada, 1);
-      
+      dataAjustada = addDays(dataAjustada, passo);
+
       // Se mudou de ano, buscar feriados do novo ano
-      if (dataAjustada.getFullYear() !== ano) {
-        const novosFeriados = await this.buscarFeriadosNacionais(dataAjustada.getFullYear());
+      if (dataAjustada.getFullYear() !== anoReferencia) {
+        anoReferencia = dataAjustada.getFullYear();
+        const novosFeriados = await this.buscarFeriadosNacionais(anoReferencia);
         feriados.push(...novosFeriados);
       }
     }

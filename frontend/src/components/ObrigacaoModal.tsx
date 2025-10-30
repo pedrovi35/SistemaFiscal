@@ -36,6 +36,7 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
     empresa: '',
     responsavel: '',
     ajusteDataUtil: true,
+    preferenciaAjuste: 'proximo',
     ...obrigacao
   });
 
@@ -215,17 +216,38 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
           </div>
 
           {/* Ajuste de Data */}
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              name="ajusteDataUtil"
-              checked={formData.ajusteDataUtil}
-              onChange={handleChange}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label className="ml-2 text-sm text-gray-700">
-              Ajustar automaticamente para próximo dia útil se cair em feriado/fim de semana
-            </label>
+          <div className="space-y-3">
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                name="ajusteDataUtil"
+                checked={!!formData.ajusteDataUtil}
+                onChange={handleChange}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label className="ml-2 text-sm text-gray-700">
+                Ajustar automaticamente se cair em feriado/fim de semana
+              </label>
+            </div>
+
+            {formData.ajusteDataUtil && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Preferência de Ajuste
+                  </label>
+                  <select
+                    name="preferenciaAjuste"
+                    value={formData.preferenciaAjuste || 'proximo'}
+                    onChange={handleChange}
+                    className="input-primary"
+                  >
+                    <option value="proximo">Dia útil seguinte (segunda)</option>
+                    <option value="anterior">Dia útil anterior (sexta)</option>
+                  </select>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Recorrência */}
