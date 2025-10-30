@@ -1,68 +1,24 @@
-import sqlite3 from 'sqlite3';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { promisify } from 'util';
 import { Pool } from 'pg';
 
-const DB_DIR = join(__dirname, '../../database');
-const DB_PATH = join(DB_DIR, 'fiscal.db');
-
 // Modo e cliente ativo de banco de dados
 let isPostgres = false;
 let pgPool: Pool | null = null;
 
-// Cliente SQLite (inicializado por padrão)
-if (!existsSync(DB_DIR)) {
-  mkdirSync(DB_DIR, { recursive: true });
-}
-const sqliteDb = new sqlite3.Database(DB_PATH, (err) => {
-  if (err) {
-    console.error('❌ Erro ao conectar ao banco de dados SQLite:', err);
-  } else {
-    console.log('✅ Conectado ao banco de dados SQLite');
-  }
-});
-const sqliteExec = promisify(sqliteDb.exec.bind(sqliteDb));
-const sqliteGet = (sql: string, params: any[] = []): Promise<any> => {
-  return new Promise((resolve, reject) => {
-    sqliteDb.get(sql, params, (err, row) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(row);
-      }
-    });
-  });
-};
-const sqliteAll = (sql: string, params: any[] = []): Promise<any[]> => {
-  return new Promise((resolve, reject) => {
-    sqliteDb.all(sql, params, (err, rows) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(rows || []);
-      }
-    });
-  });
-};
-const sqliteRun = (sql: string, params: any[] = []): Promise<{ changes: number; lastID: number }> => {
-  return new Promise((resolve, reject) => {
-    sqliteDb.run(sql, params, function(err) {
-      if (err) {
-        reject(err);
-      } else {
-        resolve({ changes: this.changes, lastID: this.lastID });
-      }
-    });
-  });
-};
-sqliteDb.run('PRAGMA foreign_keys = ON');
+// Objetos e funções do SQLite serão definidos apenas se necessário (para evitar crashes em produção)
+let sqliteDb: any = null;
+let sqliteExec: ((sql: string) => Promise<void>) | null = null;
+let sqliteGet: ((sql: string, params?: any[]) => Promise<any>) | null = null;
+let sqliteAll: ((sql: string, params?: any[]) => Promise<any[]>) | null = null;
+let sqliteRun: ((sql: string, params?: any[]) => Promise<{ changes: number; lastID: number }>) | null = null;
 
 // Adaptadores atuais (podem ser sobrescritos quando Postgres estiver ativo)
-let currentExec: (sql: string) => Promise<void> = sqliteExec as any;
-let currentGet: (sql: string, params?: any[]) => Promise<any> = sqliteGet;
-let currentAll: (sql: string, params?: any[]) => Promise<any[]> = sqliteAll;
-let currentRun: (sql: string, params?: any[]) => Promise<{ changes: number; lastID: number }> = sqliteRun;
+let currentExec: (sql: string) => Promise<void>;
+let currentGet: (sql: string, params?: any[]) => Promise<any>;
+let currentAll: (sql: string, params?: any[]) => Promise<any[]>;
+let currentRun: (sql: string, params?: any[]) => Promise<{ changes: number; lastID: number }>;
 
 // Utilitário: converte placeholders `?` para `$1, $2, ...` do Postgres
 function toPgParams(sql: string, params: any[]): { text: string; values: any[] } {
@@ -122,7 +78,66 @@ export async function initializeDatabase() {
       }
     }
 
-    // Modo SQLite (padrão): criar tabelas
+    // Modo SQLite (padrão): carregar dependência e preparar arquivos apenas aqui
+    const { default: sqlite3 } = await import('sqlite3');
+    const DB_DIR = join(__dirname, '../../database');
+    const DB_PATH = join(DB_DIR, 'fiscal.db');
+
+    if (!existsSync(DB_DIR)) {
+      mkdirSync(DB_DIR, { recursive: true });
+    }
+
+    sqliteDb = new sqlite3.Database(DB_PATH, (err: Error | null) => {
+      if (err) {
+        console.error('❌ Erro ao conectar ao banco de dados SQLite:', err);
+      } else {
+        console.log('✅ Conectado ao banco de dados SQLite');
+      }
+    });
+
+    sqliteExec = promisify(sqliteDb.exec.bind(sqliteDb));
+    sqliteGet = (sql: string, params: any[] = []): Promise<any> => {
+      return new Promise((resolve, reject) => {
+        sqliteDb.get(sql, params, (err: Error | null, row: any) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(row);
+          }
+        });
+      });
+    };
+    sqliteAll = (sql: string, params: any[] = []): Promise<any[]> => {
+      return new Promise((resolve, reject) => {
+        sqliteDb.all(sql, params, (err: Error | null, rows: any[]) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(rows || []);
+          }
+        });
+      });
+    };
+    sqliteRun = (sql: string, params: any[] = []): Promise<{ changes: number; lastID: number }> => {
+      return new Promise((resolve, reject) => {
+        sqliteDb.run(sql, params, function(this: any, err: Error | null) {
+          if (err) {
+            reject(err);
+          } else {
+            resolve({ changes: this.changes, lastID: this.lastID });
+          }
+        });
+      });
+    };
+    sqliteDb.run('PRAGMA foreign_keys = ON');
+
+    // Definir adaptadores atuais para SQLite
+    currentExec = sqliteExec as any;
+    currentGet = sqliteGet as any;
+    currentAll = sqliteAll as any;
+    currentRun = sqliteRun as any;
+
+    // Criar tabelas SQLite
     await currentExec(`
       CREATE TABLE IF NOT EXISTS obrigacoes (
         id TEXT PRIMARY KEY,
