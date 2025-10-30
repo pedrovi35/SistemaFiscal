@@ -3,8 +3,6 @@ import { existsSync, mkdirSync } from 'fs';
 import { promisify } from 'util';
 import { Pool } from 'pg';
 
-// Modo e cliente ativo de banco de dados
-let isPostgres = false;
 let pgPool: Pool | null = null;
 
 // Objetos e funções do SQLite serão definidos apenas se necessário (para evitar crashes em produção)
@@ -33,7 +31,6 @@ export async function initializeDatabase() {
     // Ativar Postgres (Supabase) se variável estiver definida
     if (process.env.DATABASE_URL && process.env.DATABASE_URL.startsWith('postgres')) {
       try {
-        isPostgres = true;
         pgPool = new Pool({
           connectionString: process.env.DATABASE_URL,
           ssl: { rejectUnauthorized: false }
@@ -72,7 +69,6 @@ export async function initializeDatabase() {
       } catch (pgError) {
         // Falha ao conectar no Postgres: voltar para SQLite
         console.warn('⚠️ Falha ao conectar ao PostgreSQL (Supabase). Voltando para SQLite. Detalhe:', pgError);
-        isPostgres = false;
         pgPool = null;
         // segue para criação das tabelas SQLite abaixo
       }
@@ -95,7 +91,7 @@ export async function initializeDatabase() {
       }
     });
 
-    sqliteExec = promisify(sqliteDb.exec.bind(sqliteDb));
+    sqliteExec = promisify(sqliteDb.exec.bind(sqliteDb)) as unknown as (sql: string) => Promise<void>;
     sqliteGet = (sql: string, params: any[] = []): Promise<any> => {
       return new Promise((resolve, reject) => {
         sqliteDb.get(sql, params, (err: Error | null, row: any) => {
