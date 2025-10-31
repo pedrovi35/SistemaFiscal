@@ -6,7 +6,7 @@ import rateLimit from 'express-rate-limit';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import dotenv from 'dotenv';
-import { initializeDatabase } from './config/database';
+import { initializeDatabase, closeDatabase } from './config/database';
 import routes from './routes';
 
 // Carregar variáveis de ambiente
@@ -180,13 +180,17 @@ process.on('uncaughtException', (error) => {
 });
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('🛑 SIGTERM recebido. Encerrando servidor...');
-  httpServer.close(() => {
+async function shutdown() {
+  console.log('🛑 Encerrando servidor...');
+  httpServer.close(async () => {
+    await closeDatabase();
     console.log('✅ Servidor encerrado com sucesso');
     process.exit(0);
   });
-});
+}
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
 
 // Iniciar
 iniciar();
