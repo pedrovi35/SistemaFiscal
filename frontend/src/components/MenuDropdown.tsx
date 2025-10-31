@@ -4,7 +4,6 @@ import {
   Users,
   Settings,
   LogOut,
-  Bell,
   FileText,
   BarChart3,
   Download,
@@ -12,15 +11,10 @@ import {
   HelpCircle,
   Moon,
   Sun,
-  Search,
   Home,
   Calendar,
   ChevronDown,
-  ExternalLink,
   BookOpen,
-  MessageSquare,
-  CreditCard,
-  Shield,
   Archive,
   X
 } from 'lucide-react';

@@ -5,7 +5,7 @@ import ImpostoModal from './ImpostoModal';
 interface ImpostoItem {
 	id: string;
 	titulo: string;
-	tipo?: string;
+	tipo?: 'FEDERAL' | 'ESTADUAL' | 'MUNICIPAL' | 'TRABALHISTA' | 'PREVIDENCIARIA' | 'OUTRO';
 	status: 'PENDENTE' | 'EM_ANDAMENTO' | 'CONCLUIDO' | 'ATRASADO';
 	recorrencia: 'Mensal' | 'Anual' | 'Personalizado';
 }
@@ -88,13 +88,13 @@ const Impostos: React.FC = () => {
 					{ id: 'CONCLUIDO' as const, label: 'Concluídos', icon: CheckCircle2, color: 'text-green-600' },
 					{ id: 'ATRASADO' as const, label: 'Atrasados', icon: AlertTriangle, color: 'text-red-600' },
 				] as const).map(tab => {
-					const Icon = tab.icon as any;
+					const Icon = (tab as any).icon;
 					const ativo = aba === tab.id;
 					const count = contadores[tab.id as keyof typeof contadores];
 					return (
 						<button key={tab.id} onClick={() => setAba(tab.id)} className={`px-3 py-1.5 rounded-full text-sm border transition-all ${ativo ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white border-transparent' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
 							<span className="inline-flex items-center gap-2">
-								{Icon ? <Icon size={16} className={`${ativo ? 'text-white' : tab.color}`} /> : null}
+								{Icon && (tab as any).color ? <Icon size={16} className={`${ativo ? 'text-white' : (tab as any).color}`} /> : null}
 								<span>{tab.label}</span>
 								<span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${ativo ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>{count}</span>
 							</span>

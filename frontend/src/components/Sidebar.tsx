@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   Calendar,
   FileText,
-  Settings,
   BarChart3,
   Download,
   Upload,
