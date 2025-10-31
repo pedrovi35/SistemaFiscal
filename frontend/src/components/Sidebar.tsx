@@ -10,20 +10,15 @@ import {
   Search,
   BookOpen,
   Calculator,
-  Clock,
   Users,
-  Bell,
   HelpCircle,
   ChevronLeft,
   ChevronRight,
   Home,
-  CheckSquare,
-  AlertTriangle,
   TrendingUp,
   Archive,
   Info
 } from 'lucide-react';
-import { useTheme } from '../contexts/ThemeContext';
 
 interface SidebarProps {
   onNavigate: (tab: string) => void;
@@ -72,7 +67,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   onAbrirFiltros,
   onAbrirDocumentacao
 }) => {
-  const { theme } = useTheme();
   const [expandedTool, setExpandedTool] = useState<string | null>(null);
 
   const navItems: NavItem[] = [

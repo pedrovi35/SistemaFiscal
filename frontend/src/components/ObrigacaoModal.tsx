@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Calendar, User, Building, Users } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Calendar, User, Users } from 'lucide-react';
 import { 
   Obrigacao, 
   TipoObrigacao, 
