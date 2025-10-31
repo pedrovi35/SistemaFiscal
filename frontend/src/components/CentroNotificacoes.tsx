@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bell, X, Check, Trash2, Filter } from 'lucide-react';
+import { Bell, X, Check, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 

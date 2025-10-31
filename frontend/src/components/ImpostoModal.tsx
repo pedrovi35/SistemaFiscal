@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Calendar, User, Users, Building } from 'lucide-react';
+import { X, Calendar, User, Users } from 'lucide-react';
 
 interface Imposto {
 	id?: string;

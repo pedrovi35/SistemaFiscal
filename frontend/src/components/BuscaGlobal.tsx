@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, X, Calendar, FileText, TrendingUp } from 'lucide-react';
+import { Search, X, Calendar, FileText } from 'lucide-react';
 import { Obrigacao } from '../types';
 
 interface BuscaGlobalProps {

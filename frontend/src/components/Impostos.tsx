@@ -5,7 +5,7 @@ import ImpostoModal from './ImpostoModal';
 interface ImpostoItem {
 	id: string;
 	titulo: string;
-	tipo?: 'FEDERAL' | 'ESTADUAL' | 'MUNICIPAL' | 'TRABALHISTA' | 'PREVIDENCIARIA' | 'OUTRO';
+	tipo: 'FEDERAL' | 'ESTADUAL' | 'MUNICIPAL' | 'TRABALHISTA' | 'PREVIDENCIARIA' | 'OUTRO';
 	status: 'PENDENTE' | 'EM_ANDAMENTO' | 'CONCLUIDO' | 'ATRASADO';
 	recorrencia: 'Mensal' | 'Anual' | 'Personalizado';
 }

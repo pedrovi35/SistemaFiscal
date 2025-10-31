@@ -43,7 +43,7 @@ function AppContent() {
   }
   const [obrigacoes, setObrigacoes] = useState<Obrigacao[]>([]);
   const [obrigacoesFiltradas, setObrigacoesFiltradas] = useState<Obrigacao[]>([]);
-  const [clientes, setClientes] = useState<Cliente[]>(mockClientes);
+  const [clientes] = useState<Cliente[]>(mockClientes);
   const [filtros, setFiltros] = useState<FiltroObrigacoes>({});
   const [loading, setLoading] = useState(true);
   const [modalAberto, setModalAberto] = useState(false);
