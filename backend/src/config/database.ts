@@ -65,7 +65,11 @@ export async function initializeDatabase() {
     // Criar pool de conexões
     pgPool = new Pool({
       connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false }
+      ssl: { rejectUnauthorized: false },
+      // @ts-ignore - A propriedade 'family' é uma opção válida para o node-postgres,
+      // mas não está presente nas definições de tipo (@types/pg).
+      // Força o uso de IPv4 para a conexão.
+      family: 4
     });
 
     // Testar conexão
