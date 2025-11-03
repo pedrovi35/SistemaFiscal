@@ -114,3 +114,38 @@ export const NomesTipoRecorrencia: Record<TipoRecorrencia, string> = {
   [TipoRecorrencia.CUSTOMIZADA]: 'Customizada'
 };
 
+export type StatusFinanceiro = 'PENDENTE' | 'EM_ANDAMENTO' | 'CONCLUIDO' | 'ATRASADO';
+
+export interface Imposto {
+  id: string;
+  titulo: string;
+  descricao?: string;
+  dataVencimento: string;
+  tipo: TipoObrigacao;
+  status: StatusFinanceiro;
+  cliente?: string;
+  responsavel?: string;
+  recorrencia: 'Mensal' | 'Anual' | 'Personalizado';
+}
+
+export interface Parcelamento {
+  id: string;
+  titulo: string;
+  descricao?: string;
+  imposto: string;
+  parcelaAtual: number;
+  totalParcelas: number;
+  valorParcela: number;
+  dataVencimento: string;
+  status: StatusFinanceiro;
+  cliente?: string;
+  responsavel?: string;
+}
+
+export const NomesStatusFinanceiro: Record<StatusFinanceiro, string> = {
+  PENDENTE: 'Pendente',
+  EM_ANDAMENTO: 'Em Andamento',
+  CONCLUIDO: 'Concluído',
+  ATRASADO: 'Atrasado'
+};
+

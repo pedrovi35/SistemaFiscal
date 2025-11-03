@@ -1,27 +1,16 @@
 import { useState } from 'react';
 import { X, Calendar, User, Users } from 'lucide-react';
-
-interface Imposto {
-	id?: string;
-	titulo: string;
-	descricao?: string;
-	dataVencimento?: string;
-	tipo: 'FEDERAL' | 'ESTADUAL' | 'MUNICIPAL' | 'TRABALHISTA' | 'PREVIDENCIARIA' | 'OUTRO';
-	status: 'PENDENTE' | 'EM_ANDAMENTO' | 'CONCLUIDO' | 'ATRASADO';
-	cliente?: string;
-	responsavel?: string;
-	recorrencia: 'Mensal' | 'Anual' | 'Personalizado';
-}
+import { Imposto as ImpostoModel } from '../types';
 
 interface ImpostoModalProps {
-	imposto?: Imposto;
-	onSave: (dados: Partial<Imposto>) => Promise<void> | void;
+	imposto?: ImpostoModel;
+	onSave: (dados: Partial<ImpostoModel>) => Promise<void> | void;
 	onClose: () => void;
 	clientes?: Array<{ id: string; nome: string }>;
 }
 
 const ImpostoModal: React.FC<ImpostoModalProps> = ({ imposto, onSave, onClose, clientes = [] }) => {
-	const [formData, setFormData] = useState<Partial<Imposto>>({
+	const [formData, setFormData] = useState<Partial<ImpostoModel>>({
 		titulo: imposto?.titulo || '',
 		descricao: imposto?.descricao || '',
 		dataVencimento: imposto?.dataVencimento || '',

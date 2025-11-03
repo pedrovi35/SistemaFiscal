@@ -1,26 +1,28 @@
 import { useMemo, useState } from 'react';
 import { CheckCircle2, Clock, AlertTriangle, Play, Check, Plus, Edit2 } from 'lucide-react';
 import ImpostoModal from './ImpostoModal';
+import { Imposto, NomesStatusFinanceiro, StatusFinanceiro } from '../types';
 
-interface ImpostoItem {
-	id: string;
-	titulo: string;
-	tipo: 'FEDERAL' | 'ESTADUAL' | 'MUNICIPAL' | 'TRABALHISTA' | 'PREVIDENCIARIA' | 'OUTRO';
-	status: 'PENDENTE' | 'EM_ANDAMENTO' | 'CONCLUIDO' | 'ATRASADO';
-	recorrencia: 'Mensal' | 'Anual' | 'Personalizado';
+interface ImpostosProps {
+	impostos: Imposto[];
+	onSave: (dados: Partial<Imposto>, id?: string) => Promise<void> | void;
+	onAlterarStatus: (id: string, status: StatusFinanceiro) => Promise<void> | void;
+	clientes?: Array<{ id: string; nome: string }>;
 }
 
-const mockImpostos: ImpostoItem[] = [
-	{ id: '1', titulo: 'IRPJ', tipo: 'FEDERAL', status: 'PENDENTE', recorrencia: 'Anual' },
-	{ id: '2', titulo: 'PIS/COFINS', tipo: 'FEDERAL', status: 'EM_ANDAMENTO', recorrencia: 'Mensal' },
-	{ id: '3', titulo: 'ISS', tipo: 'MUNICIPAL', status: 'ATRASADO', recorrencia: 'Mensal' },
-];
+const classeStatus: Record<StatusFinanceiro, string> = {
+	PENDENTE: 'status-pendente',
+	EM_ANDAMENTO: 'status-em-andamento',
+	CONCLUIDO: 'status-concluida',
+	ATRASADO: 'status-atrasada'
+};
 
-const Impostos: React.FC = () => {
-	const [impostos, setImpostos] = useState<ImpostoItem[]>(mockImpostos);
-	const [aba, setAba] = useState<'TODOS' | 'PENDENTE' | 'EM_ANDAMENTO' | 'CONCLUIDO' | 'ATRASADO'>('TODOS');
+const Impostos: React.FC<ImpostosProps> = ({ impostos, onSave, onAlterarStatus, clientes = [] }) => {
+	const [aba, setAba] = useState<'TODOS' | StatusFinanceiro>('TODOS');
 	const [modalAberto, setModalAberto] = useState(false);
-	const [impostoSelecionado, setImpostoSelecionado] = useState<ImpostoItem | undefined>();
+	const [impostoSelecionado, setImpostoSelecionado] = useState<Imposto | undefined>();
+
+	const formatadorData = useMemo(() => new Intl.DateTimeFormat('pt-BR'), []);
 
 	const contadores = useMemo(() => ({
 		TODOS: impostos.length,
@@ -30,14 +32,25 @@ const Impostos: React.FC = () => {
 		ATRASADO: impostos.filter(i => i.status === 'ATRASADO').length,
 	}), [impostos]);
 
-	const lista = useMemo(() => impostos.filter(i => aba === 'TODOS' ? true : i.status === aba), [aba, impostos]);
+	const lista = useMemo(
+		() => impostos.filter(i => (aba === 'TODOS' ? true : i.status === aba)),
+		[aba, impostos]
+	);
+
+	const formatarData = (data: string) => {
+		const dt = new Date(data);
+		if (Number.isNaN(dt.getTime())) {
+			return '-';
+		}
+		return formatadorData.format(dt);
+	};
 
 	const abrirModalNovo = () => {
 		setImpostoSelecionado(undefined);
 		setModalAberto(true);
 	};
 
-	const abrirModalEditar = (imposto: ImpostoItem) => {
+	const abrirModalEditar = (imposto: Imposto) => {
 		setImpostoSelecionado(imposto);
 		setModalAberto(true);
 	};
@@ -47,30 +60,20 @@ const Impostos: React.FC = () => {
 		setImpostoSelecionado(undefined);
 	};
 
-	const salvarImposto = async (dados: Partial<ImpostoItem>) => {
+	const salvarImposto = async (dados: Partial<Imposto>) => {
 		try {
-			if (impostoSelecionado?.id) {
-				setImpostos(prev => prev.map(i => i.id === impostoSelecionado.id ? { ...i, ...dados } as ImpostoItem : i));
-				alert('✓ Imposto atualizado com sucesso!');
-			} else {
-				const novoImposto: ImpostoItem = { ...dados as ImpostoItem, id: Date.now().toString() };
-				setImpostos(prev => [...prev, novoImposto]);
-				alert('✓ Imposto criado com sucesso!');
-			}
+			await onSave(dados, impostoSelecionado?.id);
 			fecharModal();
 		} catch (error) {
 			console.error('Erro ao salvar imposto:', error);
-			alert('✗ Erro ao salvar imposto');
 		}
 	};
 
-	const alterarStatus = async (id: string, novoStatus: ImpostoItem['status']) => {
+	const alterarStatus = async (id: string, novoStatus: StatusFinanceiro) => {
 		try {
-			setImpostos(prev => prev.map(i => i.id === id ? { ...i, status: novoStatus } : i));
-			alert('✓ Status alterado com sucesso!');
+			await onAlterarStatus(id, novoStatus);
 		} catch (error) {
 			console.error('Erro ao alterar status:', error);
-			alert('✗ Erro ao alterar status');
 		}
 	};
 
@@ -107,6 +110,8 @@ const Impostos: React.FC = () => {
 					<thead className="bg-gray-50 dark:bg-gray-800">
 						<tr className="text-left text-gray-600 dark:text-gray-300">
 							<th className="px-4 py-3">Nome</th>
+							<th className="px-4 py-3">Tipo</th>
+							<th className="px-4 py-3">Vencimento</th>
 							<th className="px-4 py-3">Recorrência</th>
 							<th className="px-4 py-3">Status</th>
 							<th className="px-4 py-3 text-right">Ações</th>
@@ -116,8 +121,10 @@ const Impostos: React.FC = () => {
 						{lista.map(i => (
 							<tr key={i.id} className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
 								<td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{i.titulo}</td>
+								<td className="px-4 py-3">{i.tipo}</td>
+								<td className="px-4 py-3">{formatarData(i.dataVencimento)}</td>
 								<td className="px-4 py-3">{i.recorrencia}</td>
-								<td className="px-4 py-3"><span className={`badge ${i.status === 'PENDENTE' ? 'status-pendente' : i.status === 'EM_ANDAMENTO' ? 'status-em-andamento' : i.status === 'CONCLUIDO' ? 'status-concluida' : 'status-atrasada'}`}>{i.status}</span></td>
+								<td className="px-4 py-3"><span className={`badge ${classeStatus[i.status]}`}>{NomesStatusFinanceiro[i.status]}</span></td>
 								<td className="px-4 py-3">
 									<div className="flex justify-end gap-2">
 										<button onClick={() => abrirModalEditar(i)} className="btn-secondary px-3 py-1.5 inline-flex items-center gap-1"><Edit2 size={14} /> Editar</button>
@@ -145,7 +152,7 @@ const Impostos: React.FC = () => {
 					imposto={impostoSelecionado}
 					onSave={salvarImposto}
 					onClose={fecharModal}
-					clientes={[]}
+					clientes={clientes}
 				/>
 			)}
 		</div>

@@ -1,38 +1,41 @@
 import { useMemo, useState } from 'react';
 import { Clock, CheckCircle2, AlertTriangle, Play, Check, Plus, Edit2 } from 'lucide-react';
 import ParcelamentoModal from './ParcelamentoModal';
+import { NomesStatusFinanceiro, Parcelamento, StatusFinanceiro } from '../types';
 
-interface ParcelamentoItem {
-	id: string;
-	titulo: string;
-	imposto: string;
-	parcelaAtual: number;
-	totalParcelas: number;
-	valorParcela: number;
-	dataVencimento: string;
-	status: 'PENDENTE' | 'EM_ANDAMENTO' | 'CONCLUIDO' | 'ATRASADO';
+interface ParcelamentosProps {
+	parcelamentos: Parcelamento[];
+	onSave: (dados: Partial<Parcelamento>, id?: string) => Promise<void> | void;
+	onAlterarStatus: (id: string, status: StatusFinanceiro) => Promise<void> | void;
+	clientes?: Array<{ id: string; nome: string }>;
 }
 
-const mockParcelamentos: ParcelamentoItem[] = [
-	{ id: '1', titulo: 'Parcelamento IRPJ', imposto: 'IRPJ', parcelaAtual: 3, totalParcelas: 12, valorParcela: 1200, dataVencimento: '2024-02-15', status: 'PENDENTE' },
-	{ id: '2', titulo: 'Parcelamento ISS', imposto: 'ISS', parcelaAtual: 6, totalParcelas: 10, valorParcela: 800, dataVencimento: '2024-02-20', status: 'EM_ANDAMENTO' },
-	{ id: '3', titulo: 'Parcelamento PIS/COFINS', imposto: 'PIS/COFINS', parcelaAtual: 10, totalParcelas: 10, valorParcela: 500, dataVencimento: '2024-02-25', status: 'CONCLUIDO' },
-];
+const classeStatus: Record<StatusFinanceiro, string> = {
+	PENDENTE: 'status-pendente',
+	EM_ANDAMENTO: 'status-em-andamento',
+	CONCLUIDO: 'status-concluida',
+	ATRASADO: 'status-atrasada'
+};
 
-const Parcelamentos: React.FC = () => {
-	const [parcelamentos, setParcelamentos] = useState<ParcelamentoItem[]>(mockParcelamentos);
-	const [filtro, setFiltro] = useState<'TODOS' | 'PENDENTE' | 'EM_ANDAMENTO' | 'CONCLUIDO' | 'ATRASADO'>('TODOS');
+const Parcelamentos: React.FC<ParcelamentosProps> = ({ parcelamentos, onSave, onAlterarStatus, clientes = [] }) => {
+	const [filtro, setFiltro] = useState<'TODOS' | StatusFinanceiro>('TODOS');
 	const [modalAberto, setModalAberto] = useState(false);
-	const [parcelamentoSelecionado, setParcelamentoSelecionado] = useState<ParcelamentoItem | undefined>();
+	const [parcelamentoSelecionado, setParcelamentoSelecionado] = useState<Parcelamento | undefined>();
+
+	const formatadorData = useMemo(() => new Intl.DateTimeFormat('pt-BR'), []);
+	const formatadorMoeda = useMemo(() => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }), []);
 	
-	const lista = useMemo(() => parcelamentos.filter(p => filtro === 'TODOS' ? true : p.status === filtro), [filtro, parcelamentos]);
+	const lista = useMemo(
+		() => parcelamentos.filter(p => (filtro === 'TODOS' ? true : p.status === filtro)),
+		[filtro, parcelamentos]
+	);
 
 	const abrirModalNovo = () => {
 		setParcelamentoSelecionado(undefined);
 		setModalAberto(true);
 	};
 
-	const abrirModalEditar = (parcelamento: ParcelamentoItem) => {
+	const abrirModalEditar = (parcelamento: Parcelamento) => {
 		setParcelamentoSelecionado(parcelamento);
 		setModalAberto(true);
 	};
@@ -42,31 +45,29 @@ const Parcelamentos: React.FC = () => {
 		setParcelamentoSelecionado(undefined);
 	};
 
-	const salvarParcelamento = async (dados: Partial<ParcelamentoItem>) => {
+	const salvarParcelamento = async (dados: Partial<Parcelamento>) => {
 		try {
-			if (parcelamentoSelecionado?.id) {
-				setParcelamentos(prev => prev.map(p => p.id === parcelamentoSelecionado.id ? { ...p, ...dados } as ParcelamentoItem : p));
-				alert('✓ Parcelamento atualizado com sucesso!');
-			} else {
-				const novoParcelamento: ParcelamentoItem = { ...dados as ParcelamentoItem, id: Date.now().toString() };
-				setParcelamentos(prev => [...prev, novoParcelamento]);
-				alert('✓ Parcelamento criado com sucesso!');
-			}
+			await onSave(dados, parcelamentoSelecionado?.id);
 			fecharModal();
 		} catch (error) {
 			console.error('Erro ao salvar parcelamento:', error);
-			alert('✗ Erro ao salvar parcelamento');
 		}
 	};
 
-	const alterarStatus = async (id: string, novoStatus: ParcelamentoItem['status']) => {
+	const alterarStatus = async (id: string, novoStatus: StatusFinanceiro) => {
 		try {
-			setParcelamentos(prev => prev.map(p => p.id === id ? { ...p, status: novoStatus } : p));
-			alert('✓ Status da parcela alterado com sucesso!');
+			await onAlterarStatus(id, novoStatus);
 		} catch (error) {
 			console.error('Erro ao alterar status:', error);
-			alert('✗ Erro ao alterar status');
 		}
+	};
+
+	const formatarData = (data: string) => {
+		const dt = new Date(data);
+		if (Number.isNaN(dt.getTime())) {
+			return '-';
+		}
+		return formatadorData.format(dt);
 	};
 
 	return (
@@ -103,6 +104,7 @@ const Parcelamentos: React.FC = () => {
 							<th className="px-4 py-3">Imposto</th>
 							<th className="px-4 py-3">Parcela</th>
 							<th className="px-4 py-3">Valor</th>
+							<th className="px-4 py-3">Vencimento</th>
 							<th className="px-4 py-3">Status</th>
 							<th className="px-4 py-3 text-right">Ações</th>
 						</tr>
@@ -113,8 +115,9 @@ const Parcelamentos: React.FC = () => {
 								<td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{p.titulo}</td>
 								<td className="px-4 py-3 text-gray-600 dark:text-gray-400">{p.imposto}</td>
 								<td className="px-4 py-3">{p.parcelaAtual}/{p.totalParcelas}</td>
-								<td className="px-4 py-3">R$ {p.valorParcela.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-								<td className="px-4 py-3"><span className={`badge ${p.status === 'PENDENTE' ? 'status-pendente' : p.status === 'EM_ANDAMENTO' ? 'status-em-andamento' : p.status === 'CONCLUIDO' ? 'status-concluida' : 'status-atrasada'}`}>{p.status}</span></td>
+								<td className="px-4 py-3">{formatadorMoeda.format(p.valorParcela)}</td>
+								<td className="px-4 py-3">{formatarData(p.dataVencimento)}</td>
+								<td className="px-4 py-3"><span className={`badge ${classeStatus[p.status]}`}>{NomesStatusFinanceiro[p.status]}</span></td>
 								<td className="px-4 py-3">
 									<div className="flex justify-end gap-2">
 										<button onClick={() => abrirModalEditar(p)} className="btn-secondary px-3 py-1.5 inline-flex items-center gap-1"><Edit2 size={14} /> Editar</button>
@@ -142,7 +145,7 @@ const Parcelamentos: React.FC = () => {
 					parcelamento={parcelamentoSelecionado}
 					onSave={salvarParcelamento}
 					onClose={fecharModal}
-					clientes={[]}
+					clientes={clientes}
 				/>
 			)}
 		</div>

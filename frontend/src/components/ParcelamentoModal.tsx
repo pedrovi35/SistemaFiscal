@@ -1,29 +1,16 @@
 import { useState } from 'react';
 import { X, Calendar, DollarSign, User, Users, FileText } from 'lucide-react';
-
-interface Parcelamento {
-	id?: string;
-	titulo: string;
-	descricao?: string;
-	imposto: string;
-	parcelaAtual: number;
-	totalParcelas: number;
-	valorParcela: number;
-	dataVencimento: string;
-	status: 'PENDENTE' | 'EM_ANDAMENTO' | 'CONCLUIDO' | 'ATRASADO';
-	cliente?: string;
-	responsavel?: string;
-}
+import { Parcelamento as ParcelamentoModel } from '../types';
 
 interface ParcelamentoModalProps {
-	parcelamento?: Parcelamento;
-	onSave: (dados: Partial<Parcelamento>) => Promise<void> | void;
+	parcelamento?: ParcelamentoModel;
+	onSave: (dados: Partial<ParcelamentoModel>) => Promise<void> | void;
 	onClose: () => void;
 	clientes?: Array<{ id: string; nome: string }>;
 }
 
 const ParcelamentoModal: React.FC<ParcelamentoModalProps> = ({ parcelamento, onSave, onClose, clientes = [] }) => {
-	const [formData, setFormData] = useState<Partial<Parcelamento>>({
+	const [formData, setFormData] = useState<Partial<ParcelamentoModel>>({
 		titulo: parcelamento?.titulo || '',
 		descricao: parcelamento?.descricao || '',
 		imposto: parcelamento?.imposto || '',
