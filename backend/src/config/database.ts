@@ -65,7 +65,8 @@ export async function initializeDatabase() {
     // Criar pool de conexões
     pgPool = new Pool({
       connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false }
+      ssl: { rejectUnauthorized: false },
+      family: 4
     });
 
     // Testar conexão
