@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Calendar, FileText, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
 import { ThemeProvider } from './contexts/ThemeContext';
 import Header from './components/Header';
@@ -22,7 +22,15 @@ import BuscaGlobal from './components/BuscaGlobal';
 import PainelAtalhos from './components/PainelAtalhos';
 import { obrigacoesApi } from './services/api';
 import socketService from './services/socket';
-import { Obrigacao, FiltroObrigacoes, StatusObrigacao } from './types';
+import {
+	Obrigacao,
+	FiltroObrigacoes,
+	StatusObrigacao,
+	Imposto,
+	Parcelamento,
+	StatusFinanceiro,
+	TipoObrigacao
+} from './types';
 import { v4 as uuidv4 } from 'uuid';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
@@ -30,6 +38,84 @@ const mockClientes: Cliente[] = [
 	{ id: '1', nome: 'ACME Ltda', cnpj: '12.345.678/0001-90', email: 'contato@acme.com', telefone: '(11) 3333-4444', ativo: true },
 	{ id: '2', nome: 'Beta Serviços', cnpj: '98.765.432/0001-10', email: 'beta@servicos.com', telefone: '(21) 9999-0000', ativo: true },
 	{ id: '3', nome: 'Gamma Holding', cnpj: '55.444.333/0001-22', email: 'financeiro@gamma.com', telefone: '(31) 2222-3333', ativo: false },
+];
+
+const mockImpostos: Imposto[] = [
+	{
+		id: 'imp-1',
+		titulo: 'IRPJ',
+		descricao: 'Imposto de Renda Pessoa Jurídica',
+		dataVencimento: '2024-11-10',
+		tipo: TipoObrigacao.FEDERAL,
+		status: 'PENDENTE',
+		cliente: 'ACME Ltda',
+		responsavel: 'João Silva',
+		recorrencia: 'Anual'
+	},
+	{
+		id: 'imp-2',
+		titulo: 'PIS/COFINS',
+		descricao: 'Contribuições sociais mensais',
+		dataVencimento: '2024-11-15',
+		tipo: TipoObrigacao.FEDERAL,
+		status: 'EM_ANDAMENTO',
+		cliente: 'Beta Serviços',
+		responsavel: 'Maria Souza',
+		recorrencia: 'Mensal'
+	},
+	{
+		id: 'imp-3',
+		titulo: 'ISS',
+		descricao: 'Imposto sobre serviços',
+		dataVencimento: '2024-11-20',
+		tipo: TipoObrigacao.MUNICIPAL,
+		status: 'ATRASADO',
+		cliente: 'Gamma Holding',
+		responsavel: 'Pedro Santos',
+		recorrencia: 'Mensal'
+	}
+];
+
+const mockParcelamentos: Parcelamento[] = [
+	{
+		id: 'par-1',
+		titulo: 'Parcelamento IRPJ 2024',
+		descricao: 'Parcelamento em 12x do IRPJ',
+		imposto: 'IRPJ',
+		parcelaAtual: 4,
+		totalParcelas: 12,
+		valorParcela: 1250,
+		dataVencimento: '2024-11-12',
+		status: 'PENDENTE',
+		cliente: 'ACME Ltda',
+		responsavel: 'João Silva'
+	},
+	{
+		id: 'par-2',
+		titulo: 'Parcelamento ISS',
+		descricao: 'Parcelamento trimestral do ISS',
+		imposto: 'ISS',
+		parcelaAtual: 2,
+		totalParcelas: 6,
+		valorParcela: 820,
+		dataVencimento: '2024-11-18',
+		status: 'EM_ANDAMENTO',
+		cliente: 'Beta Serviços',
+		responsavel: 'Maria Souza'
+	},
+	{
+		id: 'par-3',
+		titulo: 'Parcelamento PIS/COFINS',
+		descricao: 'Programa especial de parcelamento',
+		imposto: 'PIS/COFINS',
+		parcelaAtual: 10,
+		totalParcelas: 10,
+		valorParcela: 540,
+		dataVencimento: '2024-10-30',
+		status: 'CONCLUIDO',
+		cliente: 'Gamma Holding',
+		responsavel: 'Pedro Santos'
+	}
 ];
 
 function AppContent() {
@@ -44,6 +130,8 @@ function AppContent() {
   const [obrigacoes, setObrigacoes] = useState<Obrigacao[]>([]);
   const [obrigacoesFiltradas, setObrigacoesFiltradas] = useState<Obrigacao[]>([]);
   const [clientes] = useState<Cliente[]>(mockClientes);
+  const [impostos, setImpostos] = useState<Imposto[]>(() => mockImpostos);
+  const [parcelamentos, setParcelamentos] = useState<Parcelamento[]>(() => mockParcelamentos);
   const [filtros, setFiltros] = useState<FiltroObrigacoes>({});
   const [loading, setLoading] = useState(true);
   const [modalAberto, setModalAberto] = useState(false);
@@ -263,6 +351,105 @@ function AppContent() {
     }
   };
 
+  const salvarImposto = async (dados: Partial<Imposto>, id?: string) => {
+    try {
+      if (id) {
+        setImpostos(prev => prev.map(imposto => {
+          if (imposto.id !== id) {
+            return imposto;
+          }
+          return {
+            ...imposto,
+            ...dados,
+            dataVencimento: dados.dataVencimento ?? imposto.dataVencimento,
+            status: (dados.status as StatusFinanceiro | undefined) ?? imposto.status,
+            tipo: (dados.tipo as TipoObrigacao | undefined) ?? imposto.tipo,
+            recorrencia: dados.recorrencia ?? imposto.recorrencia
+          } as Imposto;
+        }));
+        adicionarNotificacao('sucesso', '✓ Imposto atualizado com sucesso!');
+      } else {
+        const novoImposto: Imposto = {
+          id: uuidv4(),
+          titulo: dados.titulo ?? 'Novo Imposto',
+          descricao: dados.descricao,
+          dataVencimento: dados.dataVencimento ?? new Date().toISOString().slice(0, 10),
+          tipo: (dados.tipo as TipoObrigacao | undefined) ?? TipoObrigacao.FEDERAL,
+          status: (dados.status as StatusFinanceiro | undefined) ?? 'PENDENTE',
+          cliente: dados.cliente,
+          responsavel: dados.responsavel,
+          recorrencia: dados.recorrencia ?? 'Mensal'
+        };
+        setImpostos(prev => [...prev, novoImposto]);
+        adicionarNotificacao('sucesso', '✓ Imposto criado com sucesso!');
+      }
+    } catch (error) {
+      console.error('Erro ao salvar imposto:', error);
+      adicionarNotificacao('erro', '✗ Erro ao salvar imposto');
+    }
+  };
+
+  const alterarStatusImposto = async (id: string, status: StatusFinanceiro) => {
+    try {
+      setImpostos(prev => prev.map(imposto => imposto.id === id ? { ...imposto, status } : imposto));
+      adicionarNotificacao('sucesso', '✓ Status do imposto atualizado!');
+    } catch (error) {
+      console.error('Erro ao alterar status de imposto:', error);
+      adicionarNotificacao('erro', '✗ Erro ao alterar status do imposto');
+    }
+  };
+
+  const salvarParcelamento = async (dados: Partial<Parcelamento>, id?: string) => {
+    try {
+      if (id) {
+        setParcelamentos(prev => prev.map(parcelamento => {
+          if (parcelamento.id !== id) {
+            return parcelamento;
+          }
+          return {
+            ...parcelamento,
+            ...dados,
+            dataVencimento: dados.dataVencimento ?? parcelamento.dataVencimento,
+            status: (dados.status as StatusFinanceiro | undefined) ?? parcelamento.status,
+            parcelaAtual: dados.parcelaAtual ?? parcelamento.parcelaAtual,
+            totalParcelas: dados.totalParcelas ?? parcelamento.totalParcelas,
+            valorParcela: dados.valorParcela ?? parcelamento.valorParcela
+          } as Parcelamento;
+        }));
+        adicionarNotificacao('sucesso', '✓ Parcelamento atualizado com sucesso!');
+      } else {
+        const novoParcelamento: Parcelamento = {
+          id: uuidv4(),
+          titulo: dados.titulo ?? 'Novo Parcelamento',
+          descricao: dados.descricao,
+          imposto: dados.imposto ?? 'Não informado',
+          parcelaAtual: dados.parcelaAtual ?? 1,
+          totalParcelas: dados.totalParcelas ?? 1,
+          valorParcela: dados.valorParcela ?? 0,
+          dataVencimento: dados.dataVencimento ?? new Date().toISOString().slice(0, 10),
+          status: (dados.status as StatusFinanceiro | undefined) ?? 'PENDENTE',
+          cliente: dados.cliente,
+          responsavel: dados.responsavel
+        };
+        setParcelamentos(prev => [...prev, novoParcelamento]);
+        adicionarNotificacao('sucesso', '✓ Parcelamento criado com sucesso!');
+      }
+    } catch (error) {
+      console.error('Erro ao salvar parcelamento:', error);
+      adicionarNotificacao('erro', '✗ Erro ao salvar parcelamento');
+    }
+  };
+
+  const alterarStatusParcelamento = async (id: string, status: StatusFinanceiro) => {
+    try {
+      setParcelamentos(prev => prev.map(parcelamento => parcelamento.id === id ? { ...parcelamento, status } : parcelamento));
+      adicionarNotificacao('sucesso', '✓ Status do parcelamento atualizado!');
+    } catch (error) {
+      console.error('Erro ao alterar status do parcelamento:', error);
+      adicionarNotificacao('erro', '✗ Erro ao alterar status do parcelamento');
+    }
+  };
+
   // Atualizar data por drag & drop
   const atualizarData = async (obrigacaoId: string, novaData: string) => {
     try {
@@ -330,9 +517,13 @@ function AppContent() {
   }, [filtros, obrigacoes]);
 
   // Extrair valores únicos para filtros
-    const clientesUnicos = Array.from(new Set(obrigacoes.map(o => o.cliente).filter(Boolean))) as string[];
+  const clientesUnicos = Array.from(new Set(obrigacoes.map(o => o.cliente).filter(Boolean))) as string[];
   const empresas = Array.from(new Set(obrigacoes.map(o => o.empresa).filter(Boolean))) as string[];
   const responsaveis = Array.from(new Set(obrigacoes.map(o => o.responsavel).filter(Boolean))) as string[];
+  const clientesSelect = useMemo(
+    () => clientes.map(c => ({ id: c.id ?? c.nome, nome: c.nome })),
+    [clientes]
+  );
 
   // Calcular estatísticas
   const stats = {
@@ -473,6 +664,8 @@ function AppContent() {
                 <div className="animate-fadeIn" style={{ animationDelay: '0.1s' }}>
                   <CalendarioFiscal
                     obrigacoes={obrigacoesFiltradas}
+                    impostos={impostos}
+                    parcelamentos={parcelamentos}
                     onEventClick={abrirModalEditar}
                     onDateSelect={abrirModalCriar}
                     onEventDrop={atualizarData}
@@ -493,15 +686,29 @@ function AppContent() {
                 </div>
               ) : activeTab === 'impostos' ? (
                 <div className="animate-fadeIn" style={{ animationDelay: '0.1s' }}>
-                  <Impostos />
+                  <Impostos
+                    impostos={impostos}
+                    onSave={salvarImposto}
+                    onAlterarStatus={alterarStatusImposto}
+                    clientes={clientesSelect}
+                  />
                 </div>
               ) : activeTab === 'parcelamentos' ? (
                 <div className="animate-fadeIn" style={{ animationDelay: '0.1s' }}>
-                  <Parcelamentos />
+                  <Parcelamentos
+                    parcelamentos={parcelamentos}
+                    onSave={salvarParcelamento}
+                    onAlterarStatus={alterarStatusParcelamento}
+                    clientes={clientesSelect}
+                  />
                 </div>
               ) : activeTab === 'relatorios' ? (
                 <div className="animate-fadeIn">
-                  <Relatorios />
+                  <Relatorios
+                    obrigacoes={obrigacoesFiltradas}
+                    impostos={impostos}
+                    parcelamentos={parcelamentos}
+                  />
                 </div>
               ) : null}
             </div>
@@ -541,7 +748,7 @@ function AppContent() {
           dataInicial={dataInicial}
           onSave={salvarObrigacao}
           onClose={fecharModal}
-          clientes={clientes.map(c => ({ id: c.id || '', nome: c.nome }))}
+          clientes={clientesSelect}
         />
       )}
 
