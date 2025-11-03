@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import dns from 'dns/promises';
 
 let pgPool: Pool | null = null;
 
@@ -44,11 +45,26 @@ export async function initializeDatabase() {
     if (!process.env.DATABASE_URL.startsWith('postgres'))
       throw new Error('DATABASE_URL deve ser uma URL PostgreSQL válida (começando com postgres:// ou postgresql://)');
 
-    // Criar pool de conexões forçando IPv4
+    // Extrair host, user, password, database, port da URL
+    const url = new URL(process.env.DATABASE_URL);
+    const host = url.hostname;
+    const user = url.username;
+    const password = url.password;
+    const database = url.pathname.replace('/', '');
+    const port = parseInt(url.port) || 5432;
+
+    // Resolver IPv4 do host
+    const addresses = await dns.lookup(host, { family: 4 });
+    const ipv4 = addresses.address;
+
+    // Criar pool de conexões
     pgPool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false },
-      family: 4 // <<< força IPv4
+      host: ipv4,
+      user,
+      password,
+      database,
+      port,
+      ssl: { rejectUnauthorized: false }
     });
 
     // Testar conexão
