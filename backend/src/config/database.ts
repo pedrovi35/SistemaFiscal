@@ -11,34 +11,26 @@ function toPgParams(sql: string, params: any[]): { text: string; values: any[] }
 
 // Funções adaptadas para usar Postgres
 async function exec(sql: string): Promise<void> {
-  if (!pgPool) {
-    throw new Error('Banco de dados não inicializado. DATABASE_URL deve estar configurada.');
-  }
+  if (!pgPool) throw new Error('Banco de dados não inicializado. DATABASE_URL deve estar configurada.');
   await pgPool.query(sql);
 }
 
 async function get(sql: string, params: any[] = []): Promise<any> {
-  if (!pgPool) {
-    throw new Error('Banco de dados não inicializado. DATABASE_URL deve estar configurada.');
-  }
+  if (!pgPool) throw new Error('Banco de dados não inicializado. DATABASE_URL deve estar configurada.');
   const { text, values } = toPgParams(sql, params);
   const res = await pgPool.query(text, values);
   return res.rows[0];
 }
 
 async function all(sql: string, params: any[] = []): Promise<any[]> {
-  if (!pgPool) {
-    throw new Error('Banco de dados não inicializado. DATABASE_URL deve estar configurada.');
-  }
+  if (!pgPool) throw new Error('Banco de dados não inicializado. DATABASE_URL deve estar configurada.');
   const { text, values } = toPgParams(sql, params);
   const res = await pgPool.query(text, values);
   return res.rows as any[];
 }
 
 async function run(sql: string, params: any[] = []): Promise<{ changes: number; lastID: number }> {
-  if (!pgPool) {
-    throw new Error('Banco de dados não inicializado. DATABASE_URL deve estar configurada.');
-  }
+  if (!pgPool) throw new Error('Banco de dados não inicializado. DATABASE_URL deve estar configurada.');
   const { text, values } = toPgParams(sql, params);
   const res: any = await pgPool.query(text, values);
   return { changes: res.rowCount ?? 0, lastID: 0 };
@@ -47,38 +39,29 @@ async function run(sql: string, params: any[] = []): Promise<{ changes: number; 
 // Inicializar banco de dados
 export async function initializeDatabase() {
   try {
-    // Verificar se DATABASE_URL está definida
-    if (!process.env.DATABASE_URL) {
-      throw new Error(
-        'DATABASE_URL não está definida. Configure a variável de ambiente com a URL de conexão do Supabase.\n' +
-        'Exemplo: postgresql://user:password@host:5432/database'
-      );
-    }
+    if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL não está definida.');
 
-    // Verificar se é uma URL PostgreSQL válida
-    if (!process.env.DATABASE_URL.startsWith('postgres')) {
-      throw new Error(
-        'DATABASE_URL deve ser uma URL PostgreSQL válida (começando com postgres:// ou postgresql://)'
-      );
-    }
+    if (!process.env.DATABASE_URL.startsWith('postgres'))
+      throw new Error('DATABASE_URL deve ser uma URL PostgreSQL válida (começando com postgres:// ou postgresql://)');
 
-    // Criar pool de conexões
+    // Criar pool de conexões forçando IPv4
     pgPool = new Pool({
       connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false }
+      ssl: { rejectUnauthorized: false },
+      family: 4 // <<< força IPv4
     });
 
     // Testar conexão
     const test = await pgPool.query('SELECT 1 as ok');
     if (test.rows?.[0]?.ok === 1) {
-      console.log('✅ Conectado ao PostgreSQL (Supabase)');
+      console.log('✅ Conectado ao PostgreSQL (Supabase via IPv4)');
     } else {
       throw new Error('Conexão ao PostgreSQL efetuada, mas teste não retornou como esperado.');
     }
 
     console.log('ℹ️ Modo PostgreSQL (Supabase) ativo');
     console.log('ℹ️ Certifique-se de que as tabelas foram criadas usando o script database_supabase.sql');
-    
+
   } catch (error) {
     console.error('❌ Erro ao inicializar banco de dados:', error);
     throw error;
@@ -95,9 +78,4 @@ export async function closeDatabase() {
 }
 
 // Exportar adaptadores
-export default {
-  run,
-  get,
-  all,
-  exec
-};
+export default { run, get, all, exec };
