@@ -38,7 +38,16 @@ const ImpostoModal: React.FC<ImpostoModalProps> = ({ imposto, onSave, onClose, c
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		await onSave(formData);
+		
+		// Garantir que todos os campos necessários estão presentes
+		const dadosCompletos = {
+			...formData,
+			dataVencimentoOriginal: formData.dataVencimento,
+			ajusteDataUtil: formData.ajusteDataUtil ?? true,
+			preferenciaAjuste: formData.preferenciaAjuste || 'proximo'
+		};
+		
+		await onSave(dadosCompletos);
 	};
 
 	const handleChange = (field: string, value: any) => {

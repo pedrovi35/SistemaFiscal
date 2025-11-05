@@ -5,33 +5,35 @@ import { v4 as uuidv4 } from 'uuid';
 export class ObrigacaoModel {
   // Criar obrigação
   async criar(obrigacao: Omit<Obrigacao, 'id' | 'criadoEm' | 'atualizadoEm'>): Promise<Obrigacao> {
-    const id = uuidv4();
     const agora = new Date().toISOString();
 
     await db.run(`
       INSERT INTO obrigacoes (
-        id, titulo, descricao, "dataVencimento", "dataVencimentoOriginal",
-        tipo, status, cliente, empresa, responsavel, "ajusteDataUtil",
-        "preferenciaAjuste", cor, "criadoEm", "atualizadoEm", "criadoPor"
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        titulo, descricao, data_vencimento, tipo, status, 
+        cliente_id, empresa, responsavel, ajuste_data_util,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      id,
       obrigacao.titulo,
       obrigacao.descricao || null,
       obrigacao.dataVencimento,
-      obrigacao.dataVencimentoOriginal,
       obrigacao.tipo,
       obrigacao.status,
-      obrigacao.cliente || null,
+      null, // cliente_id - será mapeado depois
       obrigacao.empresa || null,
       obrigacao.responsavel || null,
-      obrigacao.ajusteDataUtil ? 1 : 0,
-      obrigacao.preferenciaAjuste || 'proximo',
-      obrigacao.cor || null,
+      obrigacao.ajusteDataUtil ? true : false,
       agora,
-      agora,
-      obrigacao.criadoPor || null
+      agora
     ]);
+
+    // Buscar o ID retornado
+    const inserted = await db.get('SELECT id FROM obrigacoes WHERE created_at = ? ORDER BY id DESC LIMIT 1', [agora]);
+    const id = inserted?.id;
+
+    if (!id) {
+      throw new Error('Erro ao criar obrigação: ID não retornado');
+    }
 
     // Salvar recorrência se existir
     if (obrigacao.recorrencia) {
@@ -57,7 +59,7 @@ export class ObrigacaoModel {
   // Listar todas
   async listarTodas(): Promise<Obrigacao[]> {
     try {
-      const obrigacoes = await db.all('SELECT * FROM obrigacoes ORDER BY "dataVencimento" ASC', []) as any[];
+      const obrigacoes = await db.all('SELECT * FROM obrigacoes ORDER BY data_vencimento ASC', []) as any[];
 
       const resultados: Obrigacao[] = [];
       for (const o of obrigacoes) {
@@ -250,20 +252,20 @@ export class ObrigacaoModel {
         id: row.id,
         titulo: row.titulo,
         descricao: row.descricao || undefined,
-        dataVencimento: row.dataVencimento || row["dataVencimento"],
-        dataVencimentoOriginal: row.dataVencimentoOriginal || row["dataVencimentoOriginal"],
+        dataVencimento: row.data_vencimento || row.dataVencimento,
+        dataVencimentoOriginal: row.data_vencimento || row.dataVencimentoOriginal,
         tipo: row.tipo,
         status: row.status,
         cliente: row.cliente || undefined,
         empresa: row.empresa || undefined,
         responsavel: row.responsavel || undefined,
         recorrencia: recorrencia,
-        ajusteDataUtil: row.ajusteDataUtil === 1 || row["ajusteDataUtil"] === true,
-        preferenciaAjuste: row.preferenciaAjuste || row["preferenciaAjuste"] || 'proximo',
+        ajusteDataUtil: row.ajuste_data_util === true || row.ajusteDataUtil === 1,
+        preferenciaAjuste: 'proximo',
         cor: row.cor || undefined,
-        criadoEm: row.criadoEm || row["criadoEm"],
-        atualizadoEm: row.atualizadoEm || row["atualizadoEm"],
-        criadoPor: row.criadoPor || row["criadoPor"] || undefined
+        criadoEm: row.created_at || row.criadoEm,
+        atualizadoEm: row.updated_at || row.atualizadoEm,
+        criadoPor: row.criadoPor || undefined
       };
     } catch (error) {
       console.error('Erro ao mapear obrigação:', error);

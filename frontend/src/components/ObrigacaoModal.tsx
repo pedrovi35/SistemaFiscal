@@ -52,6 +52,7 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
     
     const dados: Partial<Obrigacao> = {
       ...formData,
+      dataVencimentoOriginal: formData.dataVencimento, // Garantir que está presente
       recorrencia: mostrarRecorrencia ? recorrencia as Recorrencia : undefined
     };
 

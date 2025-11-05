@@ -42,7 +42,15 @@ const ParcelamentoModal: React.FC<ParcelamentoModalProps> = ({ parcelamento, onS
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		await onSave(formData);
+		
+		// Garantir que todos os campos necessários estão presentes
+		const dadosCompletos = {
+			...formData,
+			ajusteDataUtil: formData.ajusteDataUtil ?? true,
+			preferenciaAjuste: formData.preferenciaAjuste || 'proximo'
+		};
+		
+		await onSave(dadosCompletos);
 	};
 
 	const handleChange = (field: string, value: any) => {
