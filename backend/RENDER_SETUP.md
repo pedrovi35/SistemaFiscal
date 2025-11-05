@@ -38,7 +38,7 @@ DATABASE_URL=postgresql://postgres:[SENHA]@[HOST]:5432/postgres
 
 **Exemplo:**
 ```
-DATABASE_URL=postgresql://postgres.abcdefghijklmnop:senha_secreta@aws-0-us-east-1.pooler.supabase.com:6543/postgres
+DATABASE_URL=postgresql://postgres.ytodollcittgwbcdjwfj:%5B15juca%40%5D@aws-1-sa-east-1.pooler.supabase.com:5432/postgres
 ```
 
 ### 4. Outras Variáveis (Opcionais)

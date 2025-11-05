@@ -2,6 +2,8 @@
 
 Este guia irá ajudá-lo a configurar o Supabase (PostgreSQL) como banco de dados para o Sistema Fiscal.
 
+⚠️ **IMPORTANTE:** Use o arquivo `database_supabase_fixed.sql` em vez do arquivo antigo `database_supabase.sql`. O novo script está totalmente compatível com o modelo TypeScript do sistema.
+
 ---
 
 ## 📋 Pré-requisitos
@@ -29,7 +31,7 @@ Este guia irá ajudá-lo a configurar o Supabase (PostgreSQL) como banco de dado
 
 1. No dashboard do Supabase, vá em **SQL Editor**
 2. Clique em **New Query**
-3. Cole o conteúdo do arquivo `database_supabase.sql`
+3. Cole o conteúdo do arquivo **`database_supabase_fixed.sql`** ⚠️ (USE O ARQUIVO FIXED!)
 4. Clique em **Run** (ou pressione Ctrl+Enter)
 
 **OU** execute via linha de comando:
@@ -44,15 +46,15 @@ supabase login
 # Vincular ao seu projeto
 supabase link --project-ref seu-project-ref
 
-# Executar migração
-supabase db push
+# Executar script SQL (USE O FIXED!)
+supabase db execute -f database_supabase_fixed.sql
 ```
 
 ### 3. Instalar Dependências do Backend
 
 ```bash
 cd backend
-npm install pg @supabase/supabase-js
+npm install pg
 ```
 
 ### 4. Configurar Variáveis de Ambiente
@@ -60,22 +62,26 @@ npm install pg @supabase/supabase-js
 Crie um arquivo `.env` na pasta `backend/`:
 
 ```env
-# Banco de Dados Supabase
-DB_TYPE=supabase
-SUPABASE_URL=https://seu-project-ref.supabase.co
-SUPABASE_KEY=sua-anon-key-aqui
-SUPABASE_SERVICE_KEY=sua-service-role-key-aqui
+# Banco de Dados Supabase (PostgreSQL)
+DATABASE_URL=postgresql://postgres.seu-project-ref:sua-senha@aws-0-sa-east-1.pooler.supabase.com:5432/postgres
 
 # Servidor
 PORT=3001
 NODE_ENV=production
+CORS_ORIGIN=http://localhost:5173
 ```
 
-**Onde encontrar as chaves:**
-- No Supabase Dashboard → **Settings** → **API**
-- **Project URL** → `SUPABASE_URL`
-- **anon public key** → `SUPABASE_KEY`
-- **service_role secret** → `SUPABASE_SERVICE_KEY`
+**Onde encontrar a DATABASE_URL:**
+1. No Supabase Dashboard → **Settings** → **Database**
+2. Role até **Connection String** → **Connection pooling**
+3. Selecione **Mode: Transaction**
+4. Copie a URL de conexão
+5. Substitua `[YOUR-PASSWORD]` pela senha do banco que você criou no passo 1
+
+**Exemplo de DATABASE_URL:**
+```
+postgresql://postgres.abc123xyz:MinHaS3nh4F0rt3@aws-0-sa-east-1.pooler.supabase.com:5432/postgres
+```
 
 ---
 
@@ -483,7 +489,7 @@ SELECT * FROM obrigacoes WHERE cliente_id = 1;
 O Supabase já tem connection pooling ativado. Use:
 
 ```
-postgres://[PROJECT_REF]:[PASSWORD]@aws-0-us-east-1.pooler.supabase.com:6543/postgres
+postgresql://postgres.ytodollcittgwbcdjwfj:%5B15juca%40%5D@aws-1-sa-east-1.pooler.supabase.com:5432/postgres
 ```
 
 ---

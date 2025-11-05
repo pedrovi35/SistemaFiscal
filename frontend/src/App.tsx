@@ -493,11 +493,11 @@ function AppContent() {
                 </div>
               ) : activeTab === 'impostos' ? (
                 <div className="animate-fadeIn" style={{ animationDelay: '0.1s' }}>
-                  <Impostos />
+                  <Impostos clientes={clientes} />
                 </div>
               ) : activeTab === 'parcelamentos' ? (
                 <div className="animate-fadeIn" style={{ animationDelay: '0.1s' }}>
-                  <Parcelamentos />
+                  <Parcelamentos clientes={clientes} />
                 </div>
               ) : activeTab === 'relatorios' ? (
                 <div className="animate-fadeIn">

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Clock, CheckCircle2, AlertTriangle, Play, Check, Plus, Edit2 } from 'lucide-react';
+import { Clock, CheckCircle2, AlertTriangle, Play, Check, Plus, Edit2, ArrowRight, ArrowLeft, User } from 'lucide-react';
 import ParcelamentoModal from './ParcelamentoModal';
 
 interface ParcelamentoItem {
@@ -10,16 +10,28 @@ interface ParcelamentoItem {
 	totalParcelas: number;
 	valorParcela: number;
 	dataVencimento: string;
+	cliente?: string;
 	status: 'PENDENTE' | 'EM_ANDAMENTO' | 'CONCLUIDO' | 'ATRASADO';
+	ajusteDataUtil?: boolean;
+	preferenciaAjuste?: 'proximo' | 'anterior';
+}
+
+interface Cliente {
+	id: string;
+	nome: string;
+}
+
+interface ParcelamentosProps {
+	clientes?: Cliente[];
 }
 
 const mockParcelamentos: ParcelamentoItem[] = [
-	{ id: '1', titulo: 'Parcelamento IRPJ', imposto: 'IRPJ', parcelaAtual: 3, totalParcelas: 12, valorParcela: 1200, dataVencimento: '2024-02-15', status: 'PENDENTE' },
-	{ id: '2', titulo: 'Parcelamento ISS', imposto: 'ISS', parcelaAtual: 6, totalParcelas: 10, valorParcela: 800, dataVencimento: '2024-02-20', status: 'EM_ANDAMENTO' },
-	{ id: '3', titulo: 'Parcelamento PIS/COFINS', imposto: 'PIS/COFINS', parcelaAtual: 10, totalParcelas: 10, valorParcela: 500, dataVencimento: '2024-02-25', status: 'CONCLUIDO' },
+	{ id: '1', titulo: 'Parcelamento IRPJ', imposto: 'IRPJ', cliente: 'ACME Ltda', parcelaAtual: 3, totalParcelas: 12, valorParcela: 1200, dataVencimento: '2024-02-15', status: 'PENDENTE', ajusteDataUtil: true, preferenciaAjuste: 'proximo' },
+	{ id: '2', titulo: 'Parcelamento ISS', imposto: 'ISS', cliente: 'Beta Serviços', parcelaAtual: 6, totalParcelas: 10, valorParcela: 800, dataVencimento: '2024-02-20', status: 'EM_ANDAMENTO', ajusteDataUtil: true, preferenciaAjuste: 'anterior' },
+	{ id: '3', titulo: 'Parcelamento PIS/COFINS', imposto: 'PIS/COFINS', cliente: 'Gamma Holding', parcelaAtual: 10, totalParcelas: 10, valorParcela: 500, dataVencimento: '2024-02-25', status: 'CONCLUIDO', ajusteDataUtil: false },
 ];
 
-const Parcelamentos: React.FC = () => {
+const Parcelamentos: React.FC<ParcelamentosProps> = ({ clientes = [] }) => {
 	const [parcelamentos, setParcelamentos] = useState<ParcelamentoItem[]>(mockParcelamentos);
 	const [filtro, setFiltro] = useState<'TODOS' | 'PENDENTE' | 'EM_ANDAMENTO' | 'CONCLUIDO' | 'ATRASADO'>('TODOS');
 	const [modalAberto, setModalAberto] = useState(false);
@@ -100,9 +112,11 @@ const Parcelamentos: React.FC = () => {
 					<thead className="bg-gray-50 dark:bg-gray-800">
 						<tr className="text-left text-gray-600 dark:text-gray-300">
 							<th className="px-4 py-3">Título</th>
+							<th className="px-4 py-3">Cliente</th>
 							<th className="px-4 py-3">Imposto</th>
 							<th className="px-4 py-3">Parcela</th>
 							<th className="px-4 py-3">Valor</th>
+							<th className="px-4 py-3">Ajuste</th>
 							<th className="px-4 py-3">Status</th>
 							<th className="px-4 py-3 text-right">Ações</th>
 						</tr>
@@ -111,9 +125,36 @@ const Parcelamentos: React.FC = () => {
 						{lista.map(p => (
 							<tr key={p.id} className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
 								<td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{p.titulo}</td>
+								<td className="px-4 py-3">
+									<span className="inline-flex items-center gap-1 text-gray-600 dark:text-gray-400">
+										<User size={14} className="text-gray-400" />
+										{p.cliente || '-'}
+									</span>
+								</td>
 								<td className="px-4 py-3 text-gray-600 dark:text-gray-400">{p.imposto}</td>
-								<td className="px-4 py-3">{p.parcelaAtual}/{p.totalParcelas}</td>
-								<td className="px-4 py-3">R$ {p.valorParcela.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+								<td className="px-4 py-3">
+									<div className="flex items-center gap-2">
+										<span className="font-medium">{p.parcelaAtual}/{p.totalParcelas}</span>
+										<div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden max-w-[60px]">
+											<div 
+												className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all"
+												style={{ width: `${(p.parcelaAtual / p.totalParcelas) * 100}%` }}
+											/>
+										</div>
+									</div>
+								</td>
+								<td className="px-4 py-3 font-medium text-emerald-600 dark:text-emerald-400">
+									R$ {p.valorParcela.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+								</td>
+								<td className="px-4 py-3">
+									{p.ajusteDataUtil ? (
+										<span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800" title={`Ajusta para dia útil ${p.preferenciaAjuste === 'proximo' ? 'seguinte' : 'anterior'}`}>
+											{p.preferenciaAjuste === 'proximo' ? <ArrowRight size={12} /> : <ArrowLeft size={12} />}
+										</span>
+									) : (
+										<span className="text-xs text-gray-400 dark:text-gray-500">-</span>
+									)}
+								</td>
 								<td className="px-4 py-3"><span className={`badge ${p.status === 'PENDENTE' ? 'status-pendente' : p.status === 'EM_ANDAMENTO' ? 'status-em-andamento' : p.status === 'CONCLUIDO' ? 'status-concluida' : 'status-atrasada'}`}>{p.status}</span></td>
 								<td className="px-4 py-3">
 									<div className="flex justify-end gap-2">

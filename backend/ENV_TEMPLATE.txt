@@ -1,0 +1,78 @@
+# =====================================================
+# TEMPLATE DE CONFIGURAÇÃO - ARQUIVO .env
+# =====================================================
+# 
+# INSTRUÇÕES:
+# 1. Copie este conteúdo
+# 2. Crie um arquivo chamado ".env" nesta pasta (backend/)
+# 3. Cole o conteúdo e preencha com suas credenciais
+# 4. NUNCA commit o arquivo .env no Git!
+#
+# =====================================================
+
+# ============= BANCO DE DADOS SUPABASE ===============
+# Obter em: Supabase Dashboard → Settings → Database → Connection String → URI
+# 
+# IMPORTANTE: Use a Connection Pooling URL para melhor performance:
+# postgresql://postgres.[REF]:[PASSWORD]@aws-0-[region].pooler.supabase.com:5432/postgres
+#
+# Exemplo:
+# DATABASE_URL=postgresql://postgres.ytodollcittgwbcdjwfj:SuaSenhaAqui@aws-1-sa-east-1.pooler.supabase.com:5432/postgres
+
+DATABASE_URL=postgresql://postgres.SEU_PROJECT_REF:SUA_SENHA@aws-1-sa-east-1.pooler.supabase.com:5432/postgres
+
+
+# ============= CONFIGURAÇÕES DO SERVIDOR =============
+
+# Porta que o backend vai rodar (padrão: 3001)
+PORT=3001
+
+# Ambiente de execução (development | production)
+NODE_ENV=development
+
+
+# ============= CORS - FRONTEND URL ===================
+
+# URL do frontend para permitir requisições CORS
+# Desenvolvimento local: http://localhost:5173
+# Produção: https://seu-dominio.com
+CORS_ORIGIN=http://localhost:5173
+
+
+# =====================================================
+# NOTAS IMPORTANTES:
+# =====================================================
+#
+# 1. ONDE OBTER A DATABASE_URL:
+#    - Acesse: https://app.supabase.com
+#    - Selecione seu projeto
+#    - Vá em Settings (⚙️) → Database
+#    - Role até "Connection String"
+#    - Copie a "URI" e substitua [YOUR-PASSWORD] pela sua senha
+#
+# 2. DIFERENÇA ENTRE URLs:
+#    - Transaction Mode: postgresql://postgres.[ref]:[pass]@db.[ref].supabase.co:5432/postgres
+#    - Session Mode (pooler): postgresql://postgres.[ref]:[pass]@aws-0-[region].pooler.supabase.com:6543/postgres
+#    - Connection Pooling (RECOMENDADO): postgresql://postgres.[ref]:[pass]@aws-0-[region].pooler.supabase.com:5432/postgres
+#
+# 3. QUAL URL USAR:
+#    ✅ RECOMENDADO: Connection Pooling (porta 5432 com pooler.supabase.com)
+#    - Melhor performance
+#    - Gerenciamento automático de conexões
+#    - Limite maior de conexões simultâneas
+#
+# 4. SEGURANÇA:
+#    - ❌ NUNCA commit este arquivo no Git
+#    - ❌ NUNCA compartilhe suas credenciais
+#    - ✅ Use variáveis de ambiente em produção
+#    - ✅ Adicione .env ao .gitignore
+#
+# 5. VERIFICAR SE ESTÁ FUNCIONANDO:
+#    npm run dev
+#    
+#    Deve aparecer:
+#    ✅ Conectado ao PostgreSQL (Supabase)
+#    🚀 Servidor rodando na porta: 3001
+#
+# =====================================================
+

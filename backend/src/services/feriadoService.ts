@@ -41,10 +41,15 @@ export class FeriadoService {
   // Salvar feriados no banco
   private async salvarFeriadosNoBanco(feriados: Feriado[]) {
     for (const feriado of feriados) {
+      const ano = new Date(feriado.data).getFullYear();
+      // PostgreSQL: usar UPSERT com ON CONFLICT
       await db.run(`
-        INSERT OR REPLACE INTO feriados (data, nome, tipo)
-        VALUES (?, ?, ?)
-      `, [feriado.data, feriado.nome, feriado.tipo]);
+        INSERT INTO feriados (data, nome, tipo, ano)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT (data, ano) DO UPDATE SET
+          nome = EXCLUDED.nome,
+          tipo = EXCLUDED.tipo
+      `, [feriado.data, feriado.nome, feriado.tipo, ano]);
     }
   }
 

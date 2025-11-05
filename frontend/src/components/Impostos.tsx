@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CheckCircle2, Clock, AlertTriangle, Play, Check, Plus, Edit2 } from 'lucide-react';
+import { CheckCircle2, Clock, AlertTriangle, Play, Check, Plus, Edit2, Calendar, ArrowRight, ArrowLeft } from 'lucide-react';
 import ImpostoModal from './ImpostoModal';
 
 interface ImpostoItem {
@@ -7,16 +7,28 @@ interface ImpostoItem {
 	titulo: string;
 	tipo: 'FEDERAL' | 'ESTADUAL' | 'MUNICIPAL' | 'TRABALHISTA' | 'PREVIDENCIARIA' | 'OUTRO';
 	status: 'PENDENTE' | 'EM_ANDAMENTO' | 'CONCLUIDO' | 'ATRASADO';
+	cliente?: string;
 	recorrencia: 'Mensal' | 'Anual' | 'Personalizado';
+	ajusteDataUtil?: boolean;
+	preferenciaAjuste?: 'proximo' | 'anterior';
+}
+
+interface Cliente {
+	id: string;
+	nome: string;
+}
+
+interface ImpostosProps {
+	clientes?: Cliente[];
 }
 
 const mockImpostos: ImpostoItem[] = [
-	{ id: '1', titulo: 'IRPJ', tipo: 'FEDERAL', status: 'PENDENTE', recorrencia: 'Anual' },
-	{ id: '2', titulo: 'PIS/COFINS', tipo: 'FEDERAL', status: 'EM_ANDAMENTO', recorrencia: 'Mensal' },
-	{ id: '3', titulo: 'ISS', tipo: 'MUNICIPAL', status: 'ATRASADO', recorrencia: 'Mensal' },
+	{ id: '1', titulo: 'IRPJ', tipo: 'FEDERAL', status: 'PENDENTE', cliente: 'ACME Ltda', recorrencia: 'Anual', ajusteDataUtil: true, preferenciaAjuste: 'proximo' },
+	{ id: '2', titulo: 'PIS/COFINS', tipo: 'FEDERAL', status: 'EM_ANDAMENTO', cliente: 'Beta Serviços', recorrencia: 'Mensal', ajusteDataUtil: true, preferenciaAjuste: 'anterior' },
+	{ id: '3', titulo: 'ISS', tipo: 'MUNICIPAL', status: 'ATRASADO', cliente: 'Gamma Holding', recorrencia: 'Mensal', ajusteDataUtil: false },
 ];
 
-const Impostos: React.FC = () => {
+const Impostos: React.FC<ImpostosProps> = ({ clientes = [] }) => {
 	const [impostos, setImpostos] = useState<ImpostoItem[]>(mockImpostos);
 	const [aba, setAba] = useState<'TODOS' | 'PENDENTE' | 'EM_ANDAMENTO' | 'CONCLUIDO' | 'ATRASADO'>('TODOS');
 	const [modalAberto, setModalAberto] = useState(false);
@@ -107,7 +119,9 @@ const Impostos: React.FC = () => {
 					<thead className="bg-gray-50 dark:bg-gray-800">
 						<tr className="text-left text-gray-600 dark:text-gray-300">
 							<th className="px-4 py-3">Nome</th>
+							<th className="px-4 py-3">Cliente</th>
 							<th className="px-4 py-3">Recorrência</th>
+							<th className="px-4 py-3">Ajuste de Data</th>
 							<th className="px-4 py-3">Status</th>
 							<th className="px-4 py-3 text-right">Ações</th>
 						</tr>
@@ -116,7 +130,34 @@ const Impostos: React.FC = () => {
 						{lista.map(i => (
 							<tr key={i.id} className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
 								<td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{i.titulo}</td>
-								<td className="px-4 py-3">{i.recorrencia}</td>
+								<td className="px-4 py-3 text-gray-600 dark:text-gray-400">{i.cliente || '-'}</td>
+								<td className="px-4 py-3">
+									<span className="inline-flex items-center gap-1">
+										<Calendar size={14} className="text-gray-400" />
+										{i.recorrencia}
+									</span>
+								</td>
+								<td className="px-4 py-3">
+									{i.ajusteDataUtil ? (
+										<div className="inline-flex items-center gap-1">
+											<span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800" title={`Ajusta para dia útil ${i.preferenciaAjuste === 'proximo' ? 'seguinte' : 'anterior'}`}>
+												{i.preferenciaAjuste === 'proximo' ? (
+													<>
+														<ArrowRight size={12} />
+														<span>Próximo</span>
+													</>
+												) : (
+													<>
+														<ArrowLeft size={12} />
+														<span>Anterior</span>
+													</>
+												)}
+											</span>
+										</div>
+									) : (
+										<span className="text-xs text-gray-400 dark:text-gray-500">-</span>
+									)}
+								</td>
 								<td className="px-4 py-3"><span className={`badge ${i.status === 'PENDENTE' ? 'status-pendente' : i.status === 'EM_ANDAMENTO' ? 'status-em-andamento' : i.status === 'CONCLUIDO' ? 'status-concluida' : 'status-atrasada'}`}>{i.status}</span></td>
 								<td className="px-4 py-3">
 									<div className="flex justify-end gap-2">

@@ -11,6 +11,7 @@ export interface Obrigacao {
   responsavel?: string;
   recorrencia?: Recorrencia;
   ajusteDataUtil: boolean;
+  preferenciaAjuste?: 'proximo' | 'anterior';
   cor?: string;
   criadoEm: string;
   atualizadoEm: string;

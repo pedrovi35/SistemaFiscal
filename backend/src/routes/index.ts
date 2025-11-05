@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import obrigacaoController from '../controllers/obrigacaoController';
 import feriadoController from '../controllers/feriadoController';
+import clienteController from '../controllers/clienteController';
 
 const router = Router();
 
@@ -17,6 +18,16 @@ router.post('/obrigacoes/:id/gerar-proxima', obrigacaoController.gerarProxima.bi
 // Rotas de feriados
 router.get('/feriados/:ano', feriadoController.listarPorAno.bind(feriadoController));
 router.post('/feriados/ajustar-data', feriadoController.ajustarData.bind(feriadoController));
+
+// Rotas de clientes
+router.get('/clientes', clienteController.listarTodos.bind(clienteController));
+router.get('/clientes/ativos', clienteController.listarAtivos.bind(clienteController));
+router.get('/clientes/cnpj/:cnpj', clienteController.buscarPorCnpj.bind(clienteController));
+router.get('/clientes/:id', clienteController.buscarPorId.bind(clienteController));
+router.post('/clientes', clienteController.criar.bind(clienteController));
+router.put('/clientes/:id', clienteController.atualizar.bind(clienteController));
+router.delete('/clientes/:id', clienteController.deletar.bind(clienteController));
+router.delete('/clientes/:id/permanente', clienteController.deletarPermanente.bind(clienteController));
 
 export default router;
 

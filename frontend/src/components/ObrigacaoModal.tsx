@@ -76,26 +76,28 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
   };
 
   return (
-    <div className="modal-backdrop animate-fadeIn" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn" onClick={onClose}>
       <div 
-        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-2xl w-full mx-2 sm:mx-4 max-h-[90vh] overflow-y-auto animate-scaleIn"
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col animate-scaleIn"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 rounded-t-xl">
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+        {/* Header - Fixo */}
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 rounded-t-xl flex-shrink-0">
+          <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             {obrigacao ? '✏️ Editar Obrigação' : '✨ Nova Obrigação'}
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-all hover:scale-110 hover:rotate-90"
+            className="flex items-center justify-center w-10 h-10 rounded-full bg-white dark:bg-gray-700 text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all hover:scale-110 shadow-md hover:shadow-lg"
+            title="Fechar (ESC)"
           >
-            <X size={24} />
+            <X size={20} strokeWidth={2.5} />
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        {/* Form - Com Scroll */}
+        <div className="overflow-y-auto flex-1 custom-scrollbar">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-6">
           {/* Título */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -334,23 +336,26 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
             )}
           </div>
 
-          {/* Botões */}
-          <div className="flex justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn-secondary"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="btn-primary"
-            >
-              {obrigacao ? '💾 Salvar Alterações' : '✨ Criar Obrigação'}
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
+
+        {/* Footer - Fixo */}
+        <div className="flex justify-end gap-3 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 rounded-b-xl flex-shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn-secondary px-6 py-2.5"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            className="btn-primary px-6 py-2.5"
+          >
+            {obrigacao ? '💾 Salvar Alterações' : '✨ Criar Obrigação'}
+          </button>
+        </div>
       </div>
     </div>
   );

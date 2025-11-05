@@ -10,10 +10,10 @@ export class ObrigacaoModel {
 
     await db.run(`
       INSERT INTO obrigacoes (
-        id, titulo, descricao, dataVencimento, dataVencimentoOriginal,
-        tipo, status, cliente, empresa, responsavel, ajusteDataUtil,
-        cor, criadoEm, atualizadoEm, criadoPor
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        id, titulo, descricao, "dataVencimento", "dataVencimentoOriginal",
+        tipo, status, cliente, empresa, responsavel, "ajusteDataUtil",
+        "preferenciaAjuste", cor, "criadoEm", "atualizadoEm", "criadoPor"
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       id,
       obrigacao.titulo,
@@ -26,6 +26,7 @@ export class ObrigacaoModel {
       obrigacao.empresa || null,
       obrigacao.responsavel || null,
       obrigacao.ajusteDataUtil ? 1 : 0,
+      obrigacao.preferenciaAjuste || 'proximo',
       obrigacao.cor || null,
       agora,
       agora,
@@ -55,13 +56,24 @@ export class ObrigacaoModel {
 
   // Listar todas
   async listarTodas(): Promise<Obrigacao[]> {
-    const obrigacoes = await db.all('SELECT * FROM obrigacoes ORDER BY dataVencimento ASC', []) as any[];
+    try {
+      const obrigacoes = await db.all('SELECT * FROM obrigacoes ORDER BY "dataVencimento" ASC', []) as any[];
 
-    const resultados: Obrigacao[] = [];
-    for (const o of obrigacoes) {
-      resultados.push(await this.mapearObrigacao(o));
+      const resultados: Obrigacao[] = [];
+      for (const o of obrigacoes) {
+        try {
+          const mapped = await this.mapearObrigacao(o);
+          resultados.push(mapped);
+        } catch (mapError) {
+          console.error('Erro ao mapear obrigação ID:', o.id, mapError);
+          // Continua com as outras obrigações
+        }
+      }
+      return resultados;
+    } catch (error) {
+      console.error('Erro ao listar obrigações:', error);
+      throw error;
     }
-    return resultados;
   }
 
   // Filtrar obrigações
@@ -96,21 +108,21 @@ export class ObrigacaoModel {
 
     if (filtro.mes !== undefined && filtro.ano !== undefined) {
       const mesStr = String(filtro.mes).padStart(2, '0');
-      query += ` AND dataVencimento LIKE ?`;
+      query += ` AND "dataVencimento"::TEXT LIKE ?`;
       params.push(`${filtro.ano}-${mesStr}-%`);
     }
 
     if (filtro.dataInicio) {
-      query += ' AND dataVencimento >= ?';
+      query += ' AND "dataVencimento" >= ?';
       params.push(filtro.dataInicio);
     }
 
     if (filtro.dataFim) {
-      query += ' AND dataVencimento <= ?';
+      query += ' AND "dataVencimento" <= ?';
       params.push(filtro.dataFim);
     }
 
-    query += ' ORDER BY dataVencimento ASC';
+    query += ' ORDER BY "dataVencimento" ASC';
 
     const obrigacoes = await db.all(query, params) as any[];
 
@@ -129,12 +141,20 @@ export class ObrigacaoModel {
     const camposPermitidos = [
       'titulo', 'descricao', 'dataVencimento', 'dataVencimentoOriginal',
       'tipo', 'status', 'cliente', 'empresa', 'responsavel',
-      'ajusteDataUtil', 'cor'
+      'ajusteDataUtil', 'preferenciaAjuste', 'cor'
     ];
+
+    const mapeamentoCampos: Record<string, string> = {
+      'dataVencimento': '"dataVencimento"',
+      'dataVencimentoOriginal': '"dataVencimentoOriginal"',
+      'ajusteDataUtil': '"ajusteDataUtil"',
+      'preferenciaAjuste': '"preferenciaAjuste"'
+    };
 
     for (const campo of camposPermitidos) {
       if (campo in dados) {
-        campos.push(`${campo} = ?`);
+        const nomeCampo = mapeamentoCampos[campo] || campo;
+        campos.push(`${nomeCampo} = ?`);
         const valor = (dados as any)[campo];
         valores.push(campo === 'ajusteDataUtil' ? (valor ? 1 : 0) : valor);
       }
@@ -142,7 +162,7 @@ export class ObrigacaoModel {
 
     if (campos.length === 0) return this.buscarPorId(id);
 
-    campos.push('atualizadoEm = ?');
+    campos.push('"atualizadoEm" = ?');
     valores.push(new Date().toISOString());
     valores.push(id);
 
@@ -166,7 +186,7 @@ export class ObrigacaoModel {
   // Salvar recorrência
   private async salvarRecorrencia(obrigacaoId: string, recorrencia: Recorrencia) {
     await db.run(`
-      INSERT INTO recorrencias (obrigacaoId, tipo, intervalo, diaDoMes, dataFim, proximaOcorrencia)
+      INSERT INTO recorrencias ("obrigacaoId", tipo, intervalo, "diaDoMes", "dataFim", "proximaOcorrencia")
       VALUES (?, ?, ?, ?, ?, ?)
     `, [
       obrigacaoId,
@@ -182,14 +202,14 @@ export class ObrigacaoModel {
   private async atualizarRecorrencia(obrigacaoId: string, recorrencia: Recorrencia) {
     // PostgreSQL: usar UPSERT com ON CONFLICT
     await db.run(`
-      INSERT INTO recorrencias (obrigacaoId, tipo, intervalo, diaDoMes, dataFim, proximaOcorrencia)
+      INSERT INTO recorrencias ("obrigacaoId", tipo, intervalo, "diaDoMes", "dataFim", "proximaOcorrencia")
       VALUES (?, ?, ?, ?, ?, ?)
-      ON CONFLICT (obrigacaoId) DO UPDATE SET
+      ON CONFLICT ("obrigacaoId") DO UPDATE SET
         tipo = EXCLUDED.tipo,
         intervalo = EXCLUDED.intervalo,
-        diaDoMes = EXCLUDED.diaDoMes,
-        dataFim = EXCLUDED.dataFim,
-        proximaOcorrencia = EXCLUDED.proximaOcorrencia
+        "diaDoMes" = EXCLUDED."diaDoMes",
+        "dataFim" = EXCLUDED."dataFim",
+        "proximaOcorrencia" = EXCLUDED."proximaOcorrencia"
     `, [
       obrigacaoId,
       recorrencia.tipo,
@@ -202,39 +222,53 @@ export class ObrigacaoModel {
 
   // Buscar recorrência
   private async buscarRecorrencia(obrigacaoId: string): Promise<Recorrencia | undefined> {
-    const rec = await db.get('SELECT * FROM recorrencias WHERE obrigacaoId = ?', [obrigacaoId]) as any;
+    try {
+      const rec = await db.get('SELECT * FROM recorrencias WHERE "obrigacaoId" = ?', [obrigacaoId]) as any;
 
-    if (!rec) return undefined;
+      if (!rec) return undefined;
 
-    return {
-      tipo: rec.tipo,
-      intervalo: rec.intervalo || undefined,
-      diaDoMes: rec.diaDoMes || undefined,
-      dataFim: rec.dataFim || undefined,
-      proximaOcorrencia: rec.proximaOcorrencia || undefined
-    };
+      return {
+        tipo: rec.tipo,
+        intervalo: rec.intervalo || undefined,
+        diaDoMes: rec.diaDoMes || rec["diaDoMes"] || undefined,
+        dataFim: rec.dataFim || rec["dataFim"] || undefined,
+        proximaOcorrencia: rec.proximaOcorrencia || rec["proximaOcorrencia"] || undefined
+      };
+    } catch (error) {
+      // Se tabela recorrencias não existir ou houver erro, retorna undefined
+      console.warn('Aviso ao buscar recorrência:', error);
+      return undefined;
+    }
   }
 
   // Mapear obrigação do banco
   private async mapearObrigacao(row: any): Promise<Obrigacao> {
-    return {
-      id: row.id,
-      titulo: row.titulo,
-      descricao: row.descricao || undefined,
-      dataVencimento: row.dataVencimento,
-      dataVencimentoOriginal: row.dataVencimentoOriginal,
-      tipo: row.tipo,
-      status: row.status,
-      cliente: row.cliente || undefined,
-      empresa: row.empresa || undefined,
-      responsavel: row.responsavel || undefined,
-      recorrencia: await this.buscarRecorrencia(row.id),
-      ajusteDataUtil: row.ajusteDataUtil === 1,
-      cor: row.cor || undefined,
-      criadoEm: row.criadoEm,
-      atualizadoEm: row.atualizadoEm,
-      criadoPor: row.criadoPor || undefined
-    };
+    try {
+      const recorrencia = await this.buscarRecorrencia(row.id).catch(() => undefined);
+      
+      return {
+        id: row.id,
+        titulo: row.titulo,
+        descricao: row.descricao || undefined,
+        dataVencimento: row.dataVencimento || row["dataVencimento"],
+        dataVencimentoOriginal: row.dataVencimentoOriginal || row["dataVencimentoOriginal"],
+        tipo: row.tipo,
+        status: row.status,
+        cliente: row.cliente || undefined,
+        empresa: row.empresa || undefined,
+        responsavel: row.responsavel || undefined,
+        recorrencia: recorrencia,
+        ajusteDataUtil: row.ajusteDataUtil === 1 || row["ajusteDataUtil"] === true,
+        preferenciaAjuste: row.preferenciaAjuste || row["preferenciaAjuste"] || 'proximo',
+        cor: row.cor || undefined,
+        criadoEm: row.criadoEm || row["criadoEm"],
+        atualizadoEm: row.atualizadoEm || row["atualizadoEm"],
+        criadoPor: row.criadoPor || row["criadoPor"] || undefined
+      };
+    } catch (error) {
+      console.error('Erro ao mapear obrigação:', error);
+      throw error;
+    }
   }
 
   // Salvar histórico
@@ -243,7 +277,7 @@ export class ObrigacaoModel {
     const timestamp = new Date().toISOString();
 
     await db.run(`
-      INSERT INTO historico (id, obrigacaoId, usuario, tipo, camposAlterados, timestamp)
+      INSERT INTO historico (id, "obrigacaoId", usuario, tipo, "camposAlterados", timestamp)
       VALUES (?, ?, ?, ?, ?, ?)
     `, [
       id,
@@ -259,17 +293,17 @@ export class ObrigacaoModel {
   async buscarHistorico(obrigacaoId: string): Promise<HistoricoAlteracao[]> {
     const registros = await db.all(`
       SELECT * FROM historico 
-      WHERE obrigacaoId = ? 
+      WHERE "obrigacaoId" = ? 
       ORDER BY timestamp DESC 
       LIMIT 50
     `, [obrigacaoId]) as any[];
 
     return registros.map(r => ({
       id: r.id,
-      obrigacaoId: r.obrigacaoId,
+      obrigacaoId: r.obrigacaoId || r["obrigacaoId"],
       usuario: r.usuario,
       tipo: r.tipo,
-      camposAlterados: r.camposAlterados ? JSON.parse(r.camposAlterados) : undefined,
+      camposAlterados: r.camposAlterados || r["camposAlterados"] ? JSON.parse(r.camposAlterados || r["camposAlterados"]) : undefined,
       timestamp: r.timestamp
     }));
   }
