@@ -58,28 +58,21 @@ export class ObrigacaoModel {
   // Listar todas
   async listarTodas(): Promise<Obrigacao[]> {
     try {
-      console.log('🔍 Buscando obrigações do banco...');
       const obrigacoes = await db.all('SELECT * FROM obrigacoes ORDER BY data_vencimento ASC', []) as any[];
-      console.log(`📊 Encontradas ${obrigacoes.length} obrigações no banco`);
 
       const resultados: Obrigacao[] = [];
       for (const o of obrigacoes) {
         try {
-          console.log(`🔄 Mapeando obrigação ID: ${o.id}, Título: ${o.titulo}`);
           const mapped = await this.mapearObrigacao(o);
           resultados.push(mapped);
-          console.log(`✅ Obrigação ${o.id} mapeada com sucesso`);
         } catch (mapError: any) {
-          console.error(`❌ Erro ao mapear obrigação ID ${o.id}:`, mapError.message);
-          console.error('Stack:', mapError.stack);
+          console.error(`Erro ao mapear obrigação ID ${o.id}:`, mapError.message);
           // Continua com as outras obrigações
         }
       }
-      console.log(`✅ Total de ${resultados.length} obrigações mapeadas com sucesso`);
       return resultados;
     } catch (error: any) {
-      console.error('❌ Erro crítico ao listar obrigações:', error.message);
-      console.error('Stack:', error.stack);
+      console.error('Erro ao listar obrigações:', error.message);
       throw error;
     }
   }

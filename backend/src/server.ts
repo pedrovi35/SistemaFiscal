@@ -70,11 +70,13 @@ const apiLimiter = rateLimit({
 });
 app.use('/api', apiLimiter);
 
-// Middleware de logging
-app.use((req: Request, _res: Response, next: NextFunction) => {
-  console.log(`📥 ${req.method} ${req.path} - Origin: ${req.get('origin') || 'N/A'}`);
-  next();
-});
+// Middleware de logging (apenas em desenvolvimento)
+if (process.env.NODE_ENV === 'development') {
+  app.use((req: Request, _res: Response, next: NextFunction) => {
+    console.log(`${req.method} ${req.path}`);
+    next();
+  });
+}
 
 // Middleware para adicionar io ao request
 app.use((req: Request, _res: Response, next: NextFunction) => {
@@ -115,10 +117,7 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 const usuariosConectados = new Map<string, { id: string; nome?: string }>();
 
 io.on('connection', (socket) => {
-  const clientOrigin = socket.handshake.headers.origin;
-  console.log(`✅ Cliente conectado: ${socket.id}`);
-  console.log(`🌐 Origem: ${clientOrigin || 'N/A'}`);
-  console.log(`🔌 Transport: ${socket.conn.transport.name}`);
+  console.log(`Cliente conectado: ${socket.id}`);
 
   // Adicionar usuário
   usuariosConectados.set(socket.id, { id: socket.id });
@@ -134,7 +133,7 @@ io.on('connection', (socket) => {
   
   // Tratar erros de conexão
   socket.on('error', (error) => {
-    console.error(`❌ Erro no socket ${socket.id}:`, error);
+    console.error(`Erro no socket ${socket.id}:`, error);
   });
 
   // Registrar nome do usuário
