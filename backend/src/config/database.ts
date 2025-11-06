@@ -1,5 +1,4 @@
 import { Pool } from 'pg';
-import dns from 'dns/promises';
 
 let pgPool: Pool | null = null;
 
@@ -40,42 +39,31 @@ async function run(sql: string, params: any[] = []): Promise<{ changes: number; 
 // Inicializar banco de dados
 export async function initializeDatabase() {
   try {
-    if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL não está definida.');
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL não está definida.');
+    }
 
-    if (!process.env.DATABASE_URL.startsWith('postgres'))
+    if (!process.env.DATABASE_URL.startsWith('postgres')) {
       throw new Error('DATABASE_URL deve ser uma URL PostgreSQL válida (começando com postgres:// ou postgresql://)');
+    }
 
-    // Extrair host, user, password, database, port da URL
-    const url = new URL(process.env.DATABASE_URL);
-    const host = url.hostname;
-    const user = url.username;
-    const password = url.password;
-    const database = url.pathname.replace('/', '');
-    const port = parseInt(url.port) || 5432;
-
-    // Resolver IPv4 do host
-    const addresses = await dns.lookup(host, { family: 4 });
-    const ipv4 = addresses.address;
-
-    // Criar pool de conexões
+    // Criar pool de conexões - configuração simplificada e compatível com Render/Supabase
     pgPool = new Pool({
-      host: ipv4,
-      user,
-      password,
-      database,
-      port,
-      ssl: { rejectUnauthorized: false }
+      connectionString: process.env.DATABASE_URL,
+      ssl: {
+        rejectUnauthorized: false // 🔥 obrigatório em Render/Supabase
+      }
     });
 
     // Testar conexão
     const test = await pgPool.query('SELECT 1 as ok');
     if (test.rows?.[0]?.ok === 1) {
-      console.log('✅ Conectado ao PostgreSQL (Supabase via IPv4)');
+      console.log('✅ Conectado ao PostgreSQL (Supabase/Render)');
     } else {
       throw new Error('Conexão ao PostgreSQL efetuada, mas teste não retornou como esperado.');
     }
 
-    console.log('ℹ️ Modo PostgreSQL (Supabase) ativo');
+    console.log('ℹ️ Modo PostgreSQL ativo');
     console.log('ℹ️ Certifique-se de que as tabelas foram criadas usando o script database_supabase.sql');
 
   } catch (error) {
