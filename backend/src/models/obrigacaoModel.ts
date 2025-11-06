@@ -6,12 +6,14 @@ export class ObrigacaoModel {
   async criar(obrigacao: Omit<Obrigacao, 'id' | 'criadoEm' | 'atualizadoEm'>): Promise<Obrigacao> {
     const agora = new Date().toISOString();
 
-    await db.run(`
+    // PostgreSQL: usar RETURNING para obter o ID
+    const result = await db.get(`
       INSERT INTO obrigacoes (
         titulo, descricao, data_vencimento, tipo, status, 
         cliente_id, empresa, responsavel, ajuste_data_util,
         created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      RETURNING id
     `, [
       obrigacao.titulo,
       obrigacao.descricao || null,
@@ -26,9 +28,7 @@ export class ObrigacaoModel {
       agora
     ]);
 
-    // Buscar o ID retornado
-    const inserted = await db.get('SELECT id FROM obrigacoes WHERE created_at = ? ORDER BY id DESC LIMIT 1', [agora]);
-    const id = inserted?.id;
+    const id = result?.id;
 
     if (!id) {
       throw new Error('Erro ao criar obrigação: ID não retornado');
@@ -109,21 +109,21 @@ export class ObrigacaoModel {
 
     if (filtro.mes !== undefined && filtro.ano !== undefined) {
       const mesStr = String(filtro.mes).padStart(2, '0');
-      query += ` AND "dataVencimento"::TEXT LIKE ?`;
+      query += ` AND data_vencimento::TEXT LIKE ?`;
       params.push(`${filtro.ano}-${mesStr}-%`);
     }
 
     if (filtro.dataInicio) {
-      query += ' AND "dataVencimento" >= ?';
+      query += ' AND data_vencimento >= ?';
       params.push(filtro.dataInicio);
     }
 
     if (filtro.dataFim) {
-      query += ' AND "dataVencimento" <= ?';
+      query += ' AND data_vencimento <= ?';
       params.push(filtro.dataFim);
     }
 
-    query += ' ORDER BY "dataVencimento" ASC';
+    query += ' ORDER BY data_vencimento ASC';
 
     const obrigacoes = await db.all(query, params) as any[];
 
@@ -146,10 +146,10 @@ export class ObrigacaoModel {
     ];
 
     const mapeamentoCampos: Record<string, string> = {
-      'dataVencimento': '"dataVencimento"',
-      'dataVencimentoOriginal': '"dataVencimentoOriginal"',
-      'ajusteDataUtil': '"ajusteDataUtil"',
-      'preferenciaAjuste': '"preferenciaAjuste"'
+      'dataVencimento': 'data_vencimento',
+      'dataVencimentoOriginal': 'data_vencimento_original',
+      'ajusteDataUtil': 'ajuste_data_util',
+      'preferenciaAjuste': 'preferencia_ajuste'
     };
 
     for (const campo of camposPermitidos) {
@@ -163,7 +163,7 @@ export class ObrigacaoModel {
 
     if (campos.length === 0) return this.buscarPorId(id);
 
-    campos.push('"atualizadoEm" = ?');
+    campos.push('updated_at = ?');
     valores.push(new Date().toISOString());
     valores.push(id);
 
@@ -186,24 +186,27 @@ export class ObrigacaoModel {
 
   // Salvar recorrência
   private async salvarRecorrencia(obrigacaoId: string, recorrencia: Recorrencia) {
+    const agora = new Date().toISOString();
     await db.run(`
       INSERT INTO recorrencias (obrigacao_id, tipo, intervalo, dia_do_mes, mes_do_ano, criada_em)
-      VALUES (?, ?, ?, ?, ?, NOW())
+      VALUES (?, ?, ?, ?, ?, ?)
     `, [
       obrigacaoId,
       recorrencia.tipo,
       recorrencia.intervalo || null,
       recorrencia.diaDoMes || null,
-      null // mes_do_ano - não está sendo usado atualmente
+      null, // mes_do_ano - não está sendo usado atualmente
+      agora
     ]);
   }
 
   // Atualizar recorrência
   private async atualizarRecorrencia(obrigacaoId: string, recorrencia: Recorrencia) {
+    const agora = new Date().toISOString();
     // PostgreSQL: usar UPSERT com ON CONFLICT
     await db.run(`
       INSERT INTO recorrencias (obrigacao_id, tipo, intervalo, dia_do_mes, mes_do_ano, criada_em)
-      VALUES (?, ?, ?, ?, ?, NOW())
+      VALUES (?, ?, ?, ?, ?, ?)
       ON CONFLICT (obrigacao_id) DO UPDATE SET
         tipo = EXCLUDED.tipo,
         intervalo = EXCLUDED.intervalo,
@@ -214,7 +217,8 @@ export class ObrigacaoModel {
       recorrencia.tipo,
       recorrencia.intervalo || null,
       recorrencia.diaDoMes || null,
-      null // mes_do_ano
+      null, // mes_do_ano
+      agora
     ]);
   }
 
@@ -271,16 +275,18 @@ export class ObrigacaoModel {
 
   // Salvar histórico
   async salvarHistorico(historico: Omit<HistoricoAlteracao, 'id' | 'timestamp'>): Promise<void> {
+    const agora = new Date().toISOString();
     // A tabela no PostgreSQL é historico_alteracoes, não historico
     await db.run(`
       INSERT INTO historico_alteracoes (obrigacao_id, campo_alterado, valor_anterior, valor_novo, usuario, created_at)
-      VALUES (?, ?, ?, ?, ?, NOW())
+      VALUES (?, ?, ?, ?, ?, ?)
     `, [
       historico.obrigacaoId,
       historico.tipo || 'alteracao',
       null, // valor_anterior - não disponível no HistoricoAlteracao atual
       historico.camposAlterados ? JSON.stringify(historico.camposAlterados) : null,
-      historico.usuario
+      historico.usuario,
+      agora
     ]);
   }
 
