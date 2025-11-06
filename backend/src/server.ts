@@ -14,23 +14,49 @@ dotenv.config();
 
 const app = express();
 const httpServer = createServer(app);
+
+// Configurar origens permitidas
+const allowedOrigins: string[] = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'https://sistema-fiscal.vercel.app',
+  process.env.CORS_ORIGIN
+].filter((origin): origin is string => Boolean(origin));
+
 const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    credentials: true
-  }
+    origin: allowedOrigins,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization']
+  },
+  transports: ['polling', 'websocket'],
+  allowEIO3: true
 });
 
 const PORT = process.env.PORT || 3001;
 
 // Middlewares
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 app.use(compression());
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true
+  origin: (origin, callback) => {
+    // Permitir requisições sem origin (mobile apps, Postman, etc)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.warn(`⚠️ Origem bloqueada por CORS: ${origin}`);
+      callback(null, false);
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range']
 }));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -44,11 +70,20 @@ const apiLimiter = rateLimit({
 });
 app.use('/api', apiLimiter);
 
+// Middleware de logging
+app.use((req: Request, _res: Response, next: NextFunction) => {
+  console.log(`📥 ${req.method} ${req.path} - Origin: ${req.get('origin') || 'N/A'}`);
+  next();
+});
+
 // Middleware para adicionar io ao request
 app.use((req: Request, _res: Response, next: NextFunction) => {
   (req as any).io = io;
   next();
 });
+
+// Tratar requisições OPTIONS (preflight)
+app.options('*', cors());
 
 // Rotas
 app.use('/api', routes);
@@ -80,7 +115,10 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 const usuariosConectados = new Map<string, { id: string; nome?: string }>();
 
 io.on('connection', (socket) => {
+  const clientOrigin = socket.handshake.headers.origin;
   console.log(`✅ Cliente conectado: ${socket.id}`);
+  console.log(`🌐 Origem: ${clientOrigin || 'N/A'}`);
+  console.log(`🔌 Transport: ${socket.conn.transport.name}`);
 
   // Adicionar usuário
   usuariosConectados.set(socket.id, { id: socket.id });
@@ -93,6 +131,11 @@ io.on('connection', (socket) => {
 
   // Enviar lista de usuários conectados
   socket.emit('users:list', Array.from(usuariosConectados.values()));
+  
+  // Tratar erros de conexão
+  socket.on('error', (error) => {
+    console.error(`❌ Erro no socket ${socket.id}:`, error);
+  });
 
   // Registrar nome do usuário
   socket.on('user:register', (data: { nome: string }) => {
