@@ -177,15 +177,15 @@ const Parcelamentos: React.FC<ParcelamentosProps> = ({ clientes = [] }) => {
 				</table>
 			</div>
 
-			{/* Modal */}
-			{modalAberto && (
-				<ParcelamentoModal
-					parcelamento={parcelamentoSelecionado}
-					onSave={salvarParcelamento}
-					onClose={fecharModal}
-					clientes={[]}
-				/>
-			)}
+		{/* Modal */}
+		{modalAberto && (
+			<ParcelamentoModal
+				parcelamento={parcelamentoSelecionado}
+				onSave={salvarParcelamento}
+				onClose={fecharModal}
+				clientes={clientes}
+			/>
+		)}
 		</div>
 	);
 };

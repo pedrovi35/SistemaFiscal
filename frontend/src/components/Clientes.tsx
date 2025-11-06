@@ -5,7 +5,7 @@ import ClienteModal from './ClienteModal';
 export type RegimeTributario = 'MEI' | 'Simples Nacional' | 'Lucro Presumido' | 'Lucro Real';
 
 export interface Cliente {
-	id?: string;
+	id: string;
 	nome: string;
 	cnpj: string;
 	email?: string;

@@ -180,15 +180,15 @@ const Impostos: React.FC<ImpostosProps> = ({ clientes = [] }) => {
 				</table>
 			</div>
 
-			{/* Modal */}
-			{modalAberto && (
-				<ImpostoModal
-					imposto={impostoSelecionado}
-					onSave={salvarImposto}
-					onClose={fecharModal}
-					clientes={[]}
-				/>
-			)}
+		{/* Modal */}
+		{modalAberto && (
+			<ImpostoModal
+				imposto={impostoSelecionado}
+				onSave={salvarImposto}
+				onClose={fecharModal}
+				clientes={clientes}
+			/>
+		)}
 		</div>
 	);
 };

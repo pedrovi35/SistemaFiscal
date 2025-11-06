@@ -5,7 +5,7 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import listPlugin from '@fullcalendar/list';
 import { EventInput, EventClickArg, DateSelectArg, EventDropArg, EventContentArg } from '@fullcalendar/core';
-import { Calendar, Clock, User, FileText, DollarSign, AlertCircle, CheckCircle, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Calendar, Clock, FileText } from 'lucide-react';
 import { Obrigacao, CoresObrigacao, StatusObrigacao } from '../types';
 import { format } from 'date-fns';
 
