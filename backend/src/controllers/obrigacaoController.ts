@@ -61,47 +61,69 @@ export class ObrigacaoController {
   // POST /api/obrigacoes
   async criar(req: Request, res: Response): Promise<void> {
     try {
+      console.log('📥 Recebendo requisição para criar obrigação');
+      console.log('📋 Dados recebidos:', JSON.stringify(req.body, null, 2));
+      
       const dados = req.body;
 
       // Validar recorrência se existir
       if (dados.recorrencia) {
+        console.log('🔄 Validando recorrência...');
         const validacao = recorrenciaService.validarRecorrencia(dados.recorrencia);
         if (!validacao.valido) {
+          console.error('❌ Recorrência inválida:', validacao.erro);
           res.status(400).json({ erro: validacao.erro });
           return;
         }
+        console.log('✅ Recorrência válida');
       }
 
       // Ajustar data de vencimento se necessário
+      console.log('📅 Processando data de vencimento:', dados.dataVencimento);
       let dataVencimento = parseISO(dados.dataVencimento);
       const dataVencimentoOriginal = dataVencimento;
 
       if (dados.ajusteDataUtil !== false) {
+        console.log('🔧 Ajustando para dia útil...');
         const direcao: 'proximo' | 'anterior' = (dados.preferenciaAjuste === 'anterior') ? 'anterior' : 'proximo';
         dataVencimento = await feriadoService.ajustarParaDiaUtil(dataVencimento, direcao);
+        console.log('✅ Data ajustada:', dataVencimento.toISOString().split('T')[0]);
       }
 
+      console.log('💾 Salvando obrigação no banco de dados...');
       const obrigacao = await obrigacaoModel.criar({
         ...dados,
         dataVencimento: dataVencimento.toISOString().split('T')[0],
         dataVencimentoOriginal: dataVencimentoOriginal.toISOString().split('T')[0],
         ajusteDataUtil: dados.ajusteDataUtil !== false
       });
+      console.log('✅ Obrigação criada com ID:', obrigacao.id);
 
       // Salvar histórico
+      console.log('📝 Salvando histórico...');
       await obrigacaoModel.salvarHistorico({
         obrigacaoId: obrigacao.id,
         usuario: dados.criadoPor || 'Sistema',
         tipo: 'CREATE'
       });
+      console.log('✅ Histórico salvo');
 
       // Emitir evento via WebSocket (será tratado no server.ts)
+      console.log('📡 Emitindo evento via WebSocket...');
       (req as any).io?.emit('obrigacao:created', obrigacao);
 
+      console.log('✅ Obrigação criada com sucesso! Retornando resposta...');
       res.status(201).json(obrigacao);
-    } catch (error) {
-      console.error('Erro ao criar obrigação:', error);
-      res.status(500).json({ erro: 'Erro ao criar obrigação' });
+    } catch (error: any) {
+      console.error('❌ ERRO ao criar obrigação:');
+      console.error('📋 Mensagem:', error.message);
+      console.error('📋 Stack:', error.stack);
+      console.error('📋 Código:', error.code);
+      console.error('📋 Detalhes completos:', error);
+      res.status(500).json({ 
+        erro: 'Erro ao criar obrigação',
+        detalhes: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   }
 

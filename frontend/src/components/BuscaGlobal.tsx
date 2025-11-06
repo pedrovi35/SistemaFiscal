@@ -38,11 +38,11 @@ const BuscaGlobal: React.FC<BuscaGlobalProps> = ({ obrigacoes, onSelect }) => {
 
     const termo = busca.toLowerCase();
     const filtrados = obrigacoes.filter(o => 
-      o.titulo.toLowerCase().includes(termo) ||
-      o.descricao?.toLowerCase().includes(termo) ||
-      o.cliente?.toLowerCase().includes(termo) ||
-      o.empresa?.toLowerCase().includes(termo) ||
-      o.responsavel?.toLowerCase().includes(termo)
+      (o.titulo || '').toLowerCase().includes(termo) ||
+      (o.descricao || '').toLowerCase().includes(termo) ||
+      (o.cliente || '').toLowerCase().includes(termo) ||
+      (o.empresa || '').toLowerCase().includes(termo) ||
+      (o.responsavel || '').toLowerCase().includes(termo)
     );
 
     setResultados(filtrados.slice(0, 8)); // Limitar a 8 resultados
