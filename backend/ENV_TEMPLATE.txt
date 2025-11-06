@@ -34,8 +34,16 @@ NODE_ENV=development
 # ============= CORS - FRONTEND URL ===================
 
 # URL do frontend para permitir requisições CORS
-# Desenvolvimento local: http://localhost:5173
-# Produção: https://seu-dominio.com
+# 
+# IMPORTANTE: 
+# - NÃO incluir barra (/) no final da URL
+# - Deve ser a URL exata do seu frontend
+#
+# Exemplos:
+# - Desenvolvimento local: http://localhost:5173
+# - Produção Vercel: https://sistema-fiscal.vercel.app
+# - Produção customizada: https://seu-dominio.com
+#
 CORS_ORIGIN=http://localhost:5173
 
 
