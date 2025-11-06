@@ -251,8 +251,8 @@ function AppContent() {
         setObrigacoes(prev => prev.map(o => o.id === atualizada.id ? atualizada : o));
         adicionarNotificacao('sucesso', '✓ Obrigação atualizada com sucesso!');
       } else {
-        const nova = await obrigacoesApi.criar(dados);
-        setObrigacoes(prev => [...prev, nova]);
+        // Criar obrigação - o WebSocket vai adicionar automaticamente, não adicionar aqui
+        await obrigacoesApi.criar(dados);
         adicionarNotificacao('sucesso', '✓ Obrigação criada com sucesso!');
       }
       fecharModal();
