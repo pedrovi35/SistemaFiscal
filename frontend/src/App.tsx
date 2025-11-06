@@ -288,6 +288,19 @@ function AppContent() {
     }
   };
 
+  // Deletar obrigação
+  const deletarObrigacao = async (id: string) => {
+    try {
+      await obrigacoesApi.deletar(id);
+      setObrigacoes(prev => prev.filter(o => o.id !== id));
+      adicionarNotificacao('sucesso', '✓ Obrigação deletada com sucesso!');
+      await aplicarFiltros();
+    } catch (error) {
+      console.error('Erro ao deletar obrigação:', error);
+      adicionarNotificacao('erro', '✗ Erro ao deletar obrigação');
+    }
+  };
+
   // Configurar WebSocket
   useEffect(() => {
     socketService.connect();
@@ -485,6 +498,7 @@ function AppContent() {
                     onCriar={() => abrirModalCriar()}
                     onEditar={abrirModalEditar}
                     onAlterarStatus={alterarStatusObrigacao}
+                    onDeletar={deletarObrigacao}
                   />
                 </div>
               ) : activeTab === 'clientes' ? (

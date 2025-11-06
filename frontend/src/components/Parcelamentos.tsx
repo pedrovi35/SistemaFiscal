@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Clock, CheckCircle2, AlertTriangle, Play, Check, Plus, Edit2, ArrowRight, ArrowLeft, User } from 'lucide-react';
+import { Clock, CheckCircle2, AlertTriangle, Play, Check, Plus, Edit2, ArrowRight, ArrowLeft, User, Trash2 } from 'lucide-react';
 import ParcelamentoModal from './ParcelamentoModal';
 
 interface ParcelamentoItem {
@@ -78,6 +78,16 @@ const Parcelamentos: React.FC<ParcelamentosProps> = ({ clientes = [] }) => {
 		} catch (error) {
 			console.error('Erro ao alterar status:', error);
 			alert('✗ Erro ao alterar status');
+		}
+	};
+
+	const deletarParcelamento = async (id: string) => {
+		try {
+			setParcelamentos(prev => prev.filter(p => p.id !== id));
+			alert('✓ Parcelamento deletado com sucesso!');
+		} catch (error) {
+			console.error('Erro ao deletar parcelamento:', error);
+			alert('✗ Erro ao deletar parcelamento');
 		}
 	};
 
@@ -169,6 +179,17 @@ const Parcelamentos: React.FC<ParcelamentosProps> = ({ clientes = [] }) => {
 												<Check size={14} /> Concluir
 											</button>
 										)}
+										<button 
+											onClick={() => {
+												if (window.confirm('Tem certeza que deseja deletar este parcelamento?')) {
+													deletarParcelamento(p.id);
+												}
+											}} 
+											className="btn-danger px-3 py-1.5 inline-flex items-center gap-1"
+											title="Deletar"
+										>
+											<Trash2 size={14} /> Deletar
+										</button>
 									</div>
 								</td>
 							</tr>

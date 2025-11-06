@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { CheckCircle2, Clock, AlertTriangle, Filter, Search, ArrowUpDown, Play, Check, Edit2, Eye } from 'lucide-react';
+import { CheckCircle2, Clock, AlertTriangle, Filter, Search, ArrowUpDown, Play, Check, Edit2, Eye, Trash2 } from 'lucide-react';
 import { Obrigacao, StatusObrigacao } from '../types';
 
 interface ListaObrigacoesProps {
@@ -7,6 +7,7 @@ interface ListaObrigacoesProps {
 	onCriar: () => void;
 	onEditar: (o: Obrigacao) => void;
 	onAlterarStatus: (id: string, status: StatusObrigacao) => Promise<void> | void;
+	onDeletar: (id: string) => Promise<void> | void;
 }
 
 type AbaStatus = 'todos' | 'pendentes' | 'em_andamento' | 'concluidas' | 'atrasadas';
@@ -19,7 +20,7 @@ const statusToBadge: Record<AbaStatus, { label: string; icon: React.ElementType;
 	atrasadas: { label: 'Atrasadas', icon: AlertTriangle, color: 'text-red-600' },
 };
 
-const ListaObrigacoes: React.FC<ListaObrigacoesProps> = ({ obrigacoes, onCriar, onEditar, onAlterarStatus }) => {
+const ListaObrigacoes: React.FC<ListaObrigacoesProps> = ({ obrigacoes, onCriar, onEditar, onAlterarStatus, onDeletar }) => {
 	const [aba, setAba] = useState<AbaStatus>('todos');
 	const [busca, setBusca] = useState('');
 	const [clienteFiltro, setClienteFiltro] = useState('');
@@ -190,6 +191,18 @@ const ListaObrigacoes: React.FC<ListaObrigacoesProps> = ({ obrigacoes, onCriar, 
 													<span>Concluir</span>
 												</button>
 											)}
+											<button
+												onClick={() => {
+													if (window.confirm('Tem certeza que deseja deletar esta obrigação?')) {
+														onDeletar(o.id);
+													}
+												}}
+												className="btn-danger px-3 py-1.5 flex items-center gap-1"
+												title="Deletar"
+											>
+												<Trash2 size={14} />
+												<span>Deletar</span>
+											</button>
 										</div>
 									</td>
 								</tr>

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CheckCircle2, Clock, AlertTriangle, Play, Check, Plus, Edit2, Calendar, ArrowRight, ArrowLeft } from 'lucide-react';
+import { CheckCircle2, Clock, AlertTriangle, Play, Check, Plus, Edit2, Calendar, ArrowRight, ArrowLeft, Trash2 } from 'lucide-react';
 import ImpostoModal from './ImpostoModal';
 
 interface ImpostoItem {
@@ -83,6 +83,16 @@ const Impostos: React.FC<ImpostosProps> = ({ clientes = [] }) => {
 		} catch (error) {
 			console.error('Erro ao alterar status:', error);
 			alert('✗ Erro ao alterar status');
+		}
+	};
+
+	const deletarImposto = async (id: string) => {
+		try {
+			setImpostos(prev => prev.filter(i => i.id !== id));
+			alert('✓ Imposto deletado com sucesso!');
+		} catch (error) {
+			console.error('Erro ao deletar imposto:', error);
+			alert('✗ Erro ao deletar imposto');
 		}
 	};
 
@@ -172,6 +182,17 @@ const Impostos: React.FC<ImpostosProps> = ({ clientes = [] }) => {
 												<Check size={14} /> Concluir
 											</button>
 										)}
+										<button 
+											onClick={() => {
+												if (window.confirm('Tem certeza que deseja deletar este imposto?')) {
+													deletarImposto(i.id);
+												}
+											}} 
+											className="btn-danger px-3 py-1.5 inline-flex items-center gap-1"
+											title="Deletar"
+										>
+											<Trash2 size={14} /> Deletar
+										</button>
 									</div>
 								</td>
 							</tr>
