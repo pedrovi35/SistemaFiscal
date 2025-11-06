@@ -1,0 +1,95 @@
+# =====================================================
+# TEMPLATE DE CONFIGURAÇÃO - ARQUIVO .env (FRONTEND)
+# =====================================================
+# 
+# INSTRUÇÕES:
+# 1. Copie este conteúdo
+# 2. Crie um arquivo chamado ".env" nesta pasta (frontend/)
+# 3. Cole o conteúdo e preencha com as URLs corretas
+# 4. NUNCA commit o arquivo .env no Git!
+#
+# =====================================================
+
+# ============= URL DA API (BACKEND) ==================
+
+# URL do backend para requisições HTTP/REST
+# 
+# Exemplos:
+# - Desenvolvimento local: http://localhost:3001
+# - Produção Render: https://sistemafiscal.onrender.com
+# - Produção Railway: https://seu-app.railway.app
+# - Produção Heroku: https://seu-app.herokuapp.com
+#
+VITE_API_URL=http://localhost:3001
+
+
+# ============= URL DO SOCKET.IO ======================
+
+# URL do backend para conexões WebSocket/Socket.IO
+# 
+# ⚠️ IMPORTANTE:
+# - Normalmente é a MESMA URL da API
+# - NÃO incluir /socket.io no final (o Socket.IO faz isso automaticamente)
+# - NÃO incluir barra (/) no final
+#
+# Exemplos:
+# - Desenvolvimento local: http://localhost:3001
+# - Produção Render: https://sistemafiscal.onrender.com
+# - Produção Railway: https://seu-app.railway.app
+# - Produção Heroku: https://seu-app.herokuapp.com
+#
+VITE_SOCKET_URL=http://localhost:3001
+
+
+# =====================================================
+# NOTAS IMPORTANTES:
+# =====================================================
+#
+# 1. DESENVOLVIMENTO LOCAL:
+#    - Use http://localhost:3001 para ambas as URLs
+#    - Certifique-se de que o backend está rodando na porta 3001
+#
+# 2. PRODUÇÃO (VERCEL + RENDER):
+#    Frontend (Vercel): 
+#      - Não precisa de .env (frontend é estático)
+#      - Configure as variáveis no painel do Vercel
+#    
+#    Backend (Render):
+#      - VITE_API_URL=https://sistemafiscal.onrender.com
+#      - VITE_SOCKET_URL=https://sistemafiscal.onrender.com
+#
+# 3. VARIÁVEIS VITE:
+#    - Todas as variáveis de ambiente DEVEM começar com VITE_
+#    - Sem o prefixo VITE_, a variável não será exposta ao frontend
+#    - As variáveis são embutidas no build (não são secretas!)
+#
+# 4. BUILD PARA PRODUÇÃO:
+#    npm run build
+#    
+#    O Vite irá substituir todas as referências a import.meta.env.VITE_*
+#    pelos valores configurados durante o build
+#
+# 5. VERCEL - CONFIGURAÇÃO:
+#    Vá em: Project Settings → Environment Variables
+#    Adicione:
+#      - VITE_API_URL = https://sistemafiscal.onrender.com
+#      - VITE_SOCKET_URL = https://sistemafiscal.onrender.com
+#
+# 6. SOCKET.IO - TRANSPORTS:
+#    O frontend está configurado para usar APENAS polling para
+#    máxima compatibilidade com Vercel, Render e outros serviços.
+#    
+#    Transports: ['polling']
+#    - ✅ Funciona em todos os ambientes
+#    - ✅ Compatível com Vercel (sem suporte nativo a WebSocket)
+#    - ✅ Compatível com Render free tier
+#    - ⚠️ Ligeiramente mais lento que WebSocket puro
+#
+# 7. TROUBLESHOOTING:
+#    - Erro 404 na API: Verifique se a VITE_API_URL está correta
+#    - Socket não conecta: Verifique VITE_SOCKET_URL e CORS do backend
+#    - Erro de CORS: Configure CORS_ORIGIN no backend
+#    - Build falha: Certifique-se de que todas as variáveis começam com VITE_
+#
+# =====================================================
+

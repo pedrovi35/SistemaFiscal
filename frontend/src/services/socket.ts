@@ -13,23 +13,46 @@ class SocketService {
     }
 
     this.socket = io(SOCKET_URL, {
-      transports: ['websocket', 'polling'],
+      // Força usar apenas polling para máxima compatibilidade com Vercel/Render
+      transports: ['polling'],
       reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      reconnectionAttempts: 5
+      reconnectionDelay: 3000,        // Tenta reconectar a cada 3s
+      reconnectionDelayMax: 10000,    // Máximo de 10s entre tentativas
+      reconnectionAttempts: Infinity, // Tenta reconectar indefinidamente
+      timeout: 20000,                 // Timeout de 20s para conexão inicial
+      autoConnect: true,
+      forceNew: false
     });
 
     this.socket.on('connect', () => {
-      console.log('✅ Conectado ao servidor WebSocket');
+      console.log('✅ Conectado ao servidor via Socket.IO (polling)');
+      console.log(`🔗 Transport: ${this.socket?.io.engine.transport.name}`);
     });
 
-    this.socket.on('disconnect', () => {
-      console.log('❌ Desconectado do servidor WebSocket');
+    this.socket.on('disconnect', (reason) => {
+      console.log('❌ Desconectado do servidor Socket.IO');
+      console.log(`📋 Motivo: ${reason}`);
     });
 
     this.socket.on('connect_error', (error) => {
-      console.error('Erro de conexão WebSocket:', error);
+      console.error('❌ Erro de conexão Socket.IO:', error.message);
+      console.log('🔄 Tentando reconectar...');
+    });
+
+    this.socket.on('reconnect', (attemptNumber) => {
+      console.log(`✅ Reconectado após ${attemptNumber} tentativa(s)`);
+    });
+
+    this.socket.on('reconnect_attempt', (attemptNumber) => {
+      console.log(`🔄 Tentativa de reconexão #${attemptNumber}`);
+    });
+
+    this.socket.on('reconnect_error', (error) => {
+      console.error('❌ Erro ao reconectar:', error.message);
+    });
+
+    this.socket.on('reconnect_failed', () => {
+      console.error('❌ Falha ao reconectar após múltiplas tentativas');
     });
 
     // Configurar listeners padrão

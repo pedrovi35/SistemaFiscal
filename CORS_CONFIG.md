@@ -83,6 +83,70 @@ const io = new SocketIOServer(httpServer, {
 
 Esta configuração já está implementada no servidor.
 
+## 🔄 Socket.IO - Configuração de Polling
+
+### Por que usar Polling?
+
+O Socket.IO no frontend está configurado para usar **apenas polling** (ao invés de WebSocket puro) para garantir compatibilidade máxima com plataformas de hospedagem:
+
+- ✅ **Vercel**: Não suporta WebSocket nativamente em planos gratuitos
+- ✅ **Render (Free Tier)**: WebSocket pode ter timeout em 30s de inatividade
+- ✅ **Cloudflare**: Pode bloquear WebSocket em alguns planos
+- ✅ **Netlify**: Não suporta WebSocket em planos gratuitos
+
+### Configuração no Frontend
+
+O arquivo `frontend/src/services/socket.ts` já está configurado:
+
+```typescript
+const socket = io(SOCKET_URL, {
+  transports: ['polling'],          // Força usar apenas polling
+  reconnection: true,
+  reconnectionDelay: 3000,          // Tenta reconectar a cada 3s
+  reconnectionDelayMax: 10000,      // Máximo de 10s entre tentativas
+  reconnectionAttempts: Infinity,   // Tenta reconectar indefinidamente
+  timeout: 20000                    // Timeout de 20s para conexão inicial
+});
+```
+
+### Diferença entre Polling e WebSocket
+
+| Característica | Polling | WebSocket |
+|----------------|---------|-----------|
+| Compatibilidade | ✅ Universal | ⚠️ Requer suporte específico |
+| Latência | ~100-200ms | ~10-50ms |
+| Consumo de recursos | Médio | Baixo |
+| Ideal para | Produção (Vercel/Render) | Desenvolvimento local |
+
+### Performance
+
+O polling HTTP long-polling usado pelo Socket.IO é **suficientemente rápido** para a maioria dos casos de uso:
+
+- ✅ Notificações em tempo real
+- ✅ Atualizações de status
+- ✅ Sincronização de dados
+- ⚠️ Pode não ser ideal para: jogos em tempo real, vídeo conferência
+
+### Alternar para WebSocket (Opcional)
+
+Se você quiser usar WebSocket em desenvolvimento (mais rápido), pode criar um arquivo `.env` no frontend:
+
+```env
+# frontend/.env
+VITE_SOCKET_URL=http://localhost:3001
+```
+
+E modificar temporariamente o `socket.ts`:
+
+```typescript
+const socket = io(SOCKET_URL, {
+  transports: ['websocket', 'polling'], // Tenta WebSocket primeiro
+  // ... resto da configuração
+});
+```
+
+**⚠️ Importante**: Em produção com Vercel, mantenha `transports: ['polling']`
+
 ## 🚀 Deploy no Render/Railway/Heroku
 
 Ao fazer deploy do backend, configure a variável de ambiente:
