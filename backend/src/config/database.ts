@@ -47,15 +47,33 @@ export async function initializeDatabase() {
       throw new Error('DATABASE_URL deve ser uma URL PostgreSQL válida (começando com postgres:// ou postgresql://)');
     }
 
+    // Log da URL (sem senha) para debug
+    const urlSemSenha = process.env.DATABASE_URL.replace(/:([^:@]+)@/, ':****@');
+    console.log('🔍 Tentando conectar ao PostgreSQL...');
+    console.log('🔗 URL:', urlSemSenha);
+
     // Criar pool de conexões - configuração simplificada e compatível com Render/Supabase
     pgPool = new Pool({
       connectionString: process.env.DATABASE_URL,
       ssl: {
         rejectUnauthorized: false // 🔥 obrigatório em Render/Supabase
-      }
+      },
+      connectionTimeoutMillis: 30000, // 30 segundos
+      idleTimeoutMillis: 30000,
+      max: 20 // Máximo de conexões no pool
+    });
+
+    // Log de eventos do pool
+    pgPool.on('error', (err) => {
+      console.error('❌ Erro inesperado no pool de conexões:', err);
+    });
+
+    pgPool.on('connect', () => {
+      console.log('🔌 Nova conexão estabelecida no pool');
     });
 
     // Testar conexão
+    console.log('⏳ Testando conexão com SELECT 1...');
     const test = await pgPool.query('SELECT 1 as ok');
     if (test.rows?.[0]?.ok === 1) {
       console.log('✅ Conectado ao PostgreSQL (Supabase/Render)');
@@ -66,8 +84,27 @@ export async function initializeDatabase() {
     console.log('ℹ️ Modo PostgreSQL ativo');
     console.log('ℹ️ Certifique-se de que as tabelas foram criadas usando o script database_supabase.sql');
 
-  } catch (error) {
-    console.error('❌ Erro ao inicializar banco de dados:', error);
+  } catch (error: any) {
+    console.error('❌ Erro ao inicializar banco de dados:', error.message);
+    console.error('📋 Detalhes do erro:', {
+      code: error.code,
+      errno: error.errno,
+      syscall: error.syscall,
+      address: error.address,
+      port: error.port
+    });
+    
+    // Dicas de troubleshooting
+    if (error.code === 'ECONNREFUSED') {
+      console.error('');
+      console.error('💡 DICA: Erro de conexão recusada. Verifique:');
+      console.error('   1. A DATABASE_URL está correta?');
+      console.error('   2. Está usando Connection Pooling URL do Supabase?');
+      console.error('   3. O firewall não está bloqueando a porta 5432?');
+      console.error('   4. O IP do Render está na whitelist do Supabase?');
+      console.error('');
+    }
+    
     throw error;
   }
 }

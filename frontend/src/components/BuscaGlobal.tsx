@@ -140,12 +140,12 @@ const BuscaGlobal: React.FC<BuscaGlobalProps> = ({ obrigacoes, onSelect }) => {
                         {obrigacao.empresa && (
                           <span className="truncate">🏢 {obrigacao.empresa}</span>
                         )}
-                      </div>
                     </div>
-                    <span className={`badge badge-${obrigacao.tipo.toLowerCase()} shrink-0`}>
-                      {obrigacao.tipo}
-                    </span>
                   </div>
+                  <span className={`badge badge-${obrigacao.tipo ? obrigacao.tipo.toLowerCase() : 'outro'} shrink-0`}>
+                    {obrigacao.tipo || 'OUTRO'}
+                  </span>
+                </div>
                 </button>
               ))}
             </div>

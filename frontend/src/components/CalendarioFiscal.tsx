@@ -115,7 +115,7 @@ const CalendarioFiscal: React.FC<CalendarioFiscalProps> = ({
       textColor: '#ffffff',
       classNames: [
         'event-custom',
-        `status-${obrigacao.status.toLowerCase()}`,
+        `status-${obrigacao.status ? obrigacao.status.toLowerCase() : 'pendente'}`,
         obrigacao.ajusteDataUtil ? 'event-with-adjustment' : ''
       ],
     extendedProps: {
