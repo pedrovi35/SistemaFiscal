@@ -50,12 +50,19 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('📝 ObrigacaoModal - Preparando dados para salvar...');
+    console.log('📋 Form Data:', formData);
+    console.log('🔄 Recorrência?', mostrarRecorrencia, recorrencia);
+    
     const dados: Partial<Obrigacao> = {
       ...formData,
       dataVencimentoOriginal: formData.dataVencimento, // Garantir que está presente
       recorrencia: mostrarRecorrencia ? recorrencia as Recorrencia : undefined
     };
 
+    console.log('💾 Dados finais a serem salvos:', dados);
+    console.log('🎯 Chamando onSave...');
+    
     onSave(dados);
   };
 
@@ -98,7 +105,7 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
 
         {/* Form - Com Scroll */}
         <div className="overflow-y-auto flex-1 custom-scrollbar">
-          <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-6">
+          <form onSubmit={handleSubmit} id="obrigacao-form" className="p-4 sm:p-6 space-y-6">
           {/* Título */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -350,8 +357,8 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
             Cancelar
           </button>
           <button
-            type="button"
-            onClick={handleSubmit}
+            type="submit"
+            form="obrigacao-form"
             className="btn-primary px-6 py-2.5"
           >
             {obrigacao ? '💾 Salvar Alterações' : '✨ Criar Obrigação'}

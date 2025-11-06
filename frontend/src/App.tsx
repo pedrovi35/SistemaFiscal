@@ -246,20 +246,35 @@ function AppContent() {
   // Salvar obrigação
   const salvarObrigacao = async (dados: Partial<Obrigacao>) => {
     try {
+      console.log('💾 Salvando obrigação...', { 
+        edicao: !!obrigacaoSelecionada, 
+        id: obrigacaoSelecionada?.id,
+        dados 
+      });
+
       if (obrigacaoSelecionada) {
+        console.log('📝 Atualizando obrigação existente:', obrigacaoSelecionada.id);
         const atualizada = await obrigacoesApi.atualizar(obrigacaoSelecionada.id, dados);
+        console.log('✅ Obrigação atualizada:', atualizada);
         setObrigacoes(prev => prev.map(o => o.id === atualizada.id ? atualizada : o));
         adicionarNotificacao('sucesso', '✓ Obrigação atualizada com sucesso!');
       } else {
-        // Criar obrigação - o WebSocket vai adicionar automaticamente, não adicionar aqui
-        await obrigacoesApi.criar(dados);
+        console.log('✨ Criando nova obrigação');
+        const nova = await obrigacoesApi.criar(dados);
+        console.log('✅ Obrigação criada:', nova);
+        setObrigacoes(prev => [...prev, nova]);
         adicionarNotificacao('sucesso', '✓ Obrigação criada com sucesso!');
       }
       fecharModal();
       await aplicarFiltros();
-    } catch (error) {
-      console.error('Erro ao salvar:', error);
-      adicionarNotificacao('erro', '✗ Erro ao salvar obrigação');
+    } catch (error: any) {
+      console.error('❌ Erro ao salvar:', error);
+      console.error('📋 Detalhes do erro:', {
+        message: error.message,
+        status: error.status,
+        response: error.response?.data
+      });
+      adicionarNotificacao('erro', `✗ Erro ao salvar obrigação: ${error.message}`);
     }
   };
 
