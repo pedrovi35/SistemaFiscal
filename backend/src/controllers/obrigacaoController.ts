@@ -69,6 +69,16 @@ export class ObrigacaoController {
       // Validar recorrência se existir
       if (dados.recorrencia) {
         console.log('🔄 Validando recorrência...');
+        
+        // Garantir que recorrência é um objeto, não uma string
+        if (typeof dados.recorrencia === 'string') {
+          console.error('❌ Recorrência deve ser um objeto, não uma string:', dados.recorrencia);
+          res.status(400).json({ 
+            erro: 'Formato de recorrência inválido. Esperado objeto com propriedade "tipo"' 
+          });
+          return;
+        }
+        
         const validacao = recorrenciaService.validarRecorrencia(dados.recorrencia);
         if (!validacao.valido) {
           console.error('❌ Recorrência inválida:', validacao.erro);
@@ -141,6 +151,14 @@ export class ObrigacaoController {
 
       // Validar recorrência se existir
       if (dados.recorrencia) {
+        // Garantir que recorrência é um objeto, não uma string
+        if (typeof dados.recorrencia === 'string') {
+          res.status(400).json({ 
+            erro: 'Formato de recorrência inválido. Esperado objeto com propriedade "tipo"' 
+          });
+          return;
+        }
+        
         const validacao = recorrenciaService.validarRecorrencia(dados.recorrencia);
         if (!validacao.valido) {
           res.status(400).json({ erro: validacao.erro });
