@@ -1,6 +1,5 @@
 import db from '../config/database';
 import { Obrigacao, Recorrencia, FiltroObrigacoes, HistoricoAlteracao } from '../types';
-import { v4 as uuidv4 } from 'uuid';
 
 export class ObrigacaoModel {
   // Criar obrigação
@@ -188,15 +187,14 @@ export class ObrigacaoModel {
   // Salvar recorrência
   private async salvarRecorrencia(obrigacaoId: string, recorrencia: Recorrencia) {
     await db.run(`
-      INSERT INTO recorrencias ("obrigacaoId", tipo, intervalo, "diaDoMes", "dataFim", "proximaOcorrencia")
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO recorrencias (obrigacao_id, tipo, intervalo, dia_do_mes, mes_do_ano, criada_em)
+      VALUES (?, ?, ?, ?, ?, NOW())
     `, [
       obrigacaoId,
       recorrencia.tipo,
       recorrencia.intervalo || null,
       recorrencia.diaDoMes || null,
-      recorrencia.dataFim || null,
-      recorrencia.proximaOcorrencia || null
+      null // mes_do_ano - não está sendo usado atualmente
     ]);
   }
 
@@ -204,37 +202,35 @@ export class ObrigacaoModel {
   private async atualizarRecorrencia(obrigacaoId: string, recorrencia: Recorrencia) {
     // PostgreSQL: usar UPSERT com ON CONFLICT
     await db.run(`
-      INSERT INTO recorrencias ("obrigacaoId", tipo, intervalo, "diaDoMes", "dataFim", "proximaOcorrencia")
-      VALUES (?, ?, ?, ?, ?, ?)
-      ON CONFLICT ("obrigacaoId") DO UPDATE SET
+      INSERT INTO recorrencias (obrigacao_id, tipo, intervalo, dia_do_mes, mes_do_ano, criada_em)
+      VALUES (?, ?, ?, ?, ?, NOW())
+      ON CONFLICT (obrigacao_id) DO UPDATE SET
         tipo = EXCLUDED.tipo,
         intervalo = EXCLUDED.intervalo,
-        "diaDoMes" = EXCLUDED."diaDoMes",
-        "dataFim" = EXCLUDED."dataFim",
-        "proximaOcorrencia" = EXCLUDED."proximaOcorrencia"
+        dia_do_mes = EXCLUDED.dia_do_mes,
+        mes_do_ano = EXCLUDED.mes_do_ano
     `, [
       obrigacaoId,
       recorrencia.tipo,
       recorrencia.intervalo || null,
       recorrencia.diaDoMes || null,
-      recorrencia.dataFim || null,
-      recorrencia.proximaOcorrencia || null
+      null // mes_do_ano
     ]);
   }
 
   // Buscar recorrência
   private async buscarRecorrencia(obrigacaoId: string): Promise<Recorrencia | undefined> {
     try {
-      const rec = await db.get('SELECT * FROM recorrencias WHERE "obrigacaoId" = ?', [obrigacaoId]) as any;
+      const rec = await db.get('SELECT * FROM recorrencias WHERE obrigacao_id = ?', [obrigacaoId]) as any;
 
       if (!rec) return undefined;
 
       return {
         tipo: rec.tipo,
         intervalo: rec.intervalo || undefined,
-        diaDoMes: rec.diaDoMes || rec["diaDoMes"] || undefined,
-        dataFim: rec.dataFim || rec["dataFim"] || undefined,
-        proximaOcorrencia: rec.proximaOcorrencia || rec["proximaOcorrencia"] || undefined
+        diaDoMes: rec.dia_do_mes || rec.diaDoMes || undefined,
+        dataFim: undefined, // dataFim não existe na tabela atual
+        proximaOcorrencia: undefined // proximaOcorrencia não existe na tabela atual
       };
     } catch (error) {
       // Se tabela recorrencias não existir ou houver erro, retorna undefined
@@ -275,38 +271,39 @@ export class ObrigacaoModel {
 
   // Salvar histórico
   async salvarHistorico(historico: Omit<HistoricoAlteracao, 'id' | 'timestamp'>): Promise<void> {
-    const id = uuidv4();
-    const timestamp = new Date().toISOString();
-
+    // A tabela no PostgreSQL é historico_alteracoes, não historico
     await db.run(`
-      INSERT INTO historico (id, "obrigacaoId", usuario, tipo, "camposAlterados", timestamp)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO historico_alteracoes (obrigacao_id, campo_alterado, valor_anterior, valor_novo, usuario, created_at)
+      VALUES (?, ?, ?, ?, ?, NOW())
     `, [
-      id,
       historico.obrigacaoId,
-      historico.usuario,
-      historico.tipo,
+      historico.tipo || 'alteracao',
+      null, // valor_anterior - não disponível no HistoricoAlteracao atual
       historico.camposAlterados ? JSON.stringify(historico.camposAlterados) : null,
-      timestamp
+      historico.usuario
     ]);
   }
 
   // Buscar histórico
   async buscarHistorico(obrigacaoId: string): Promise<HistoricoAlteracao[]> {
     const registros = await db.all(`
-      SELECT * FROM historico 
-      WHERE "obrigacaoId" = ? 
-      ORDER BY timestamp DESC 
+      SELECT * FROM historico_alteracoes 
+      WHERE obrigacao_id = ? 
+      ORDER BY created_at DESC 
       LIMIT 50
     `, [obrigacaoId]) as any[];
 
     return registros.map(r => ({
-      id: r.id,
-      obrigacaoId: r.obrigacaoId || r["obrigacaoId"],
-      usuario: r.usuario,
-      tipo: r.tipo,
-      camposAlterados: r.camposAlterados || r["camposAlterados"] ? JSON.parse(r.camposAlterados || r["camposAlterados"]) : undefined,
-      timestamp: r.timestamp
+      id: r.id.toString(),
+      obrigacaoId: r.obrigacao_id || r.obrigacaoId,
+      usuario: r.usuario || 'Sistema',
+      tipo: r.campo_alterado || r.tipo || 'alteracao',
+      camposAlterados: r.valor_novo ? (
+        typeof r.valor_novo === 'string' && r.valor_novo.startsWith('{') 
+          ? JSON.parse(r.valor_novo) 
+          : { [r.campo_alterado]: r.valor_novo }
+      ) : undefined,
+      timestamp: r.created_at || r.timestamp
     }));
   }
 }
