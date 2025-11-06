@@ -9,11 +9,19 @@ export class ObrigacaoController {
   // GET /api/obrigacoes
   async listarTodas(_req: Request, res: Response): Promise<void> {
     try {
+      console.log('📋 Iniciando listagem de obrigações...');
       const obrigacoes = await obrigacaoModel.listarTodas();
+      console.log(`✅ Listadas ${obrigacoes.length} obrigações com sucesso`);
       res.json(obrigacoes);
-    } catch (error) {
-      console.error('Erro ao listar obrigações:', error);
-      res.status(500).json({ erro: 'Erro ao listar obrigações' });
+    } catch (error: any) {
+      console.error('❌ Erro ao listar obrigações:');
+      console.error('📋 Mensagem:', error.message);
+      console.error('📋 Stack:', error.stack);
+      console.error('📋 Detalhes:', error);
+      res.status(500).json({ 
+        erro: 'Erro ao listar obrigações',
+        detalhes: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   }
 
