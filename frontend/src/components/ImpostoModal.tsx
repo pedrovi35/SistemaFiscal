@@ -1,5 +1,13 @@
 import { useState } from 'react';
 import { X, Calendar, User, Users, Info } from 'lucide-react';
+import { TipoRecorrencia } from '../types';
+
+interface Recorrencia {
+	tipo: TipoRecorrencia;
+	intervalo?: number;
+	diaDoMes?: number;
+	dataFim?: string;
+}
 
 interface Imposto {
 	id?: string;
@@ -10,7 +18,7 @@ interface Imposto {
 	status: 'PENDENTE' | 'EM_ANDAMENTO' | 'CONCLUIDO' | 'ATRASADO';
 	cliente?: string;
 	responsavel?: string;
-	recorrencia: 'Mensal' | 'Anual' | 'Personalizado';
+	recorrencia?: Recorrencia;
 	ajusteDataUtil?: boolean;
 	preferenciaAjuste?: 'proximo' | 'anterior';
 }
@@ -23,6 +31,10 @@ interface ImpostoModalProps {
 }
 
 const ImpostoModal: React.FC<ImpostoModalProps> = ({ imposto, onSave, onClose, clientes = [] }) => {
+	const [tipoRecorrenciaSelecionado, setTipoRecorrenciaSelecionado] = useState<string>(
+		imposto?.recorrencia?.tipo || 'MENSAL'
+	);
+	
 	const [formData, setFormData] = useState<Partial<Imposto>>({
 		titulo: imposto?.titulo || '',
 		descricao: imposto?.descricao || '',
@@ -31,7 +43,9 @@ const ImpostoModal: React.FC<ImpostoModalProps> = ({ imposto, onSave, onClose, c
 		status: imposto?.status || 'PENDENTE',
 		cliente: imposto?.cliente || '',
 		responsavel: imposto?.responsavel || '',
-		recorrencia: imposto?.recorrencia || 'Mensal',
+		recorrencia: imposto?.recorrencia || {
+			tipo: TipoRecorrencia.MENSAL
+		},
 		ajusteDataUtil: imposto?.ajusteDataUtil ?? true,
 		preferenciaAjuste: imposto?.preferenciaAjuste || 'proximo'
 	});
@@ -52,6 +66,17 @@ const ImpostoModal: React.FC<ImpostoModalProps> = ({ imposto, onSave, onClose, c
 
 	const handleChange = (field: string, value: any) => {
 		setFormData(prev => ({ ...prev, [field]: value }));
+	};
+
+	const handleRecorrenciaChange = (tipo: string) => {
+		setTipoRecorrenciaSelecionado(tipo);
+		setFormData(prev => ({
+			...prev,
+			recorrencia: {
+				tipo: tipo as TipoRecorrencia,
+				diaDoMes: prev.dataVencimento ? new Date(prev.dataVencimento).getDate() : undefined
+			}
+		}));
 	};
 
 	return (
@@ -225,22 +250,55 @@ const ImpostoModal: React.FC<ImpostoModalProps> = ({ imposto, onSave, onClose, c
 							</div>
 						</div>
 
-						{/* Recorrência */}
+					{/* Recorrência */}
+					<div>
+						<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+							🔄 Recorrência *
+						</label>
+						<select
+							value={tipoRecorrenciaSelecionado}
+							onChange={(e) => handleRecorrenciaChange(e.target.value)}
+							className="input-primary"
+							required
+						>
+							<option value="MENSAL">📅 Mensal</option>
+							<option value="BIMESTRAL">📆 Bimestral</option>
+							<option value="TRIMESTRAL">📊 Trimestral</option>
+							<option value="SEMESTRAL">📈 Semestral</option>
+							<option value="ANUAL">🗓️ Anual</option>
+							<option value="CUSTOMIZADA">⚙️ Personalizada</option>
+						</select>
+						<p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+							Define a periodicidade de repetição desta obrigação
+						</p>
+					</div>
+
+					{/* Intervalo Customizado */}
+					{tipoRecorrenciaSelecionado === 'CUSTOMIZADA' && (
 						<div>
 							<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-								🔄 Recorrência *
+								Intervalo (meses) *
 							</label>
-							<select
-								value={formData.recorrencia}
-								onChange={(e) => handleChange('recorrencia', e.target.value)}
+							<input
+								type="number"
+								min="1"
+								value={formData.recorrencia?.intervalo || ''}
+								onChange={(e) => setFormData(prev => ({
+									...prev,
+									recorrencia: {
+										...prev.recorrencia!,
+										intervalo: parseInt(e.target.value)
+									}
+								}))}
 								className="input-primary"
+								placeholder="Ex: 4 (para quadrimestral)"
 								required
-							>
-								<option value="Mensal">📅 Mensal</option>
-								<option value="Anual">🗓️ Anual</option>
-								<option value="Personalizado">⚙️ Personalizado</option>
-							</select>
+							/>
+							<p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+								Número de meses entre cada ocorrência
+							</p>
 						</div>
+					)}
 					</div>
 
 					{/* Ajuste de Data */}
