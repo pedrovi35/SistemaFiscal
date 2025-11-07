@@ -69,7 +69,9 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
   const [mostrarRecorrencia, setMostrarRecorrencia] = useState(!!obrigacao?.recorrencia);
   const [recorrencia, setRecorrencia] = useState<Partial<Recorrencia>>(
     obrigacao?.recorrencia || {
-      tipo: TipoRecorrencia.MENSAL
+      tipo: TipoRecorrencia.MENSAL,
+      ativo: true,
+      diaGeracao: 1
     }
   );
 
@@ -113,7 +115,7 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
     const { name, value } = e.target;
     setRecorrencia(prev => ({
       ...prev,
-      [name]: name === 'intervalo' || name === 'diaDoMes' ? parseInt(value) : value
+      [name]: (name === 'intervalo' || name === 'diaDoMes' || name === 'diaGeracao') ? parseInt(value) || undefined : value
     }));
   };
 
@@ -294,8 +296,8 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
             )}
           </div>
 
-          {/* Recorrência */}
-          <div className="border-t border-gray-200 pt-6">
+          {/* Recorrência Automática */}
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
             <div className="flex items-center mb-4">
               <input
                 type="checkbox"
@@ -303,33 +305,51 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
                 onChange={(e) => setMostrarRecorrencia(e.target.checked)}
                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               />
-              <label className="ml-2 text-sm font-medium text-gray-700">
-                Configurar recorrência
+              <label className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                🔄 Configurar Recorrência Automática
               </label>
             </div>
 
             {mostrarRecorrencia && (
-              <div className="space-y-4 pl-6">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-6 pl-6 bg-blue-50 dark:bg-gray-900/50 rounded-lg p-4">
+                {/* Informação sobre recorrência */}
+                <div className="text-xs text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <p className="font-semibold mb-1">ℹ️ Como funciona:</p>
+                  <ul className="list-disc list-inside space-y-1 text-blue-700 dark:text-blue-300">
+                    <li>A obrigação será criada automaticamente todo dia <strong>{recorrencia.diaGeracao || 1}</strong> do mês</li>
+                    <li>Vencimento sempre no dia <strong>{recorrencia.diaDoMes || '(data escolhida)'}</strong></li>
+                    <li>Se cair em sábado, domingo ou feriado, ajusta automaticamente</li>
+                    <li>Periodicidade: <strong>{NomesTipoRecorrencia[recorrencia.tipo as TipoRecorrencia]}</strong></li>
+                  </ul>
+                </div>
+
+                {/* Tipo de Recorrência e Intervalo */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tipo de Recorrência
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      📅 Periodicidade *
                     </label>
                     <select
                       name="tipo"
                       value={recorrencia.tipo}
                       onChange={handleRecorrenciaChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="input-primary"
                     >
                       {Object.entries(NomesTipoRecorrencia).map(([key, value]) => (
                         <option key={key} value={key}>{value}</option>
                       ))}
                     </select>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {recorrencia.tipo === TipoRecorrencia.MENSAL && 'Gera todo mês'}
+                      {recorrencia.tipo === TipoRecorrencia.TRIMESTRAL && 'Gera a cada 3 meses'}
+                      {recorrencia.tipo === TipoRecorrencia.SEMESTRAL && 'Gera a cada 6 meses'}
+                      {recorrencia.tipo === TipoRecorrencia.ANUAL && 'Gera todo ano'}
+                    </p>
                   </div>
 
                   {recorrencia.tipo === TipoRecorrencia.CUSTOMIZADA && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Intervalo (meses)
                       </label>
                       <input
@@ -338,16 +358,18 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
                         value={recorrencia.intervalo || ''}
                         onChange={handleRecorrenciaChange}
                         min="1"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Ex: 4"
+                        className="input-primary"
                       />
                     </div>
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                {/* Dia Fixo de Vencimento e Dia de Geração */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Dia do Mês (opcional)
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      📍 Dia Fixo de Vencimento *
                     </label>
                     <input
                       type="number"
@@ -356,24 +378,91 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
                       onChange={handleRecorrenciaChange}
                       min="1"
                       max="31"
-                      placeholder="Ex: 15"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required={mostrarRecorrencia}
+                      placeholder="Ex: 20"
+                      className="input-primary"
                     />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      A obrigação sempre vencerá neste dia
+                    </p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Data Fim (opcional)
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      🗓️ Dia de Geração
+                    </label>
+                    <input
+                      type="number"
+                      name="diaGeracao"
+                      value={recorrencia.diaGeracao || 1}
+                      onChange={handleRecorrenciaChange}
+                      min="1"
+                      max="31"
+                      className="input-primary"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Dia do mês que o sistema criará a obrigação
+                    </p>
+                  </div>
+                </div>
+
+                {/* Data Fim e Status */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      ⏰ Data Limite (opcional)
                     </label>
                     <input
                       type="date"
                       name="dataFim"
                       value={recorrencia.dataFim || ''}
                       onChange={handleRecorrenciaChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="input-primary"
                     />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Quando parar de gerar automaticamente
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Status Inicial
+                    </label>
+                    <div className="flex items-center h-10">
+                      <input
+                        type="checkbox"
+                        checked={recorrencia.ativo !== false}
+                        onChange={(e) => setRecorrencia(prev => ({ ...prev, ativo: e.target.checked }))}
+                        className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                      />
+                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                        {recorrencia.ativo !== false ? '✅ Ativa' : '⏸️ Pausada'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Você pode pausar/retomar depois
+                    </p>
                   </div>
                 </div>
+
+                {/* Exemplo Visual */}
+                {recorrencia.diaDoMes && (
+                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                    <p className="text-sm font-semibold text-green-700 dark:text-green-400 mb-2">
+                      ✨ Exemplo de Funcionamento:
+                    </p>
+                    <div className="text-xs text-green-600 dark:text-green-300 space-y-1">
+                      <p>• <strong>Hoje (01/12/2025):</strong> Sistema cria obrigação com vencimento dia {recorrencia.diaDoMes}/12/2025</p>
+                      {recorrencia.tipo === TipoRecorrencia.MENSAL && (
+                        <p>• <strong>01/01/2026:</strong> Sistema cria obrigação com vencimento dia {recorrencia.diaDoMes}/01/2026</p>
+                      )}
+                      {recorrencia.tipo === TipoRecorrencia.TRIMESTRAL && (
+                        <p>• <strong>01/03/2026:</strong> Sistema cria obrigação com vencimento dia {recorrencia.diaDoMes}/03/2026</p>
+                      )}
+                      <p className="text-xs italic mt-2">* Se o dia cair em fim de semana ou feriado, será ajustado automaticamente</p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

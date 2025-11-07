@@ -84,7 +84,14 @@ const CalendarioFiscal: React.FC<CalendarioFiscalProps> = ({
       <div className={`fc-event-custom ${getStatusClass(obrigacao.status)} overflow-hidden h-full flex items-center gap-1.5 px-2 py-1`}>
         <span className="text-xs flex-shrink-0">{getStatusIcon(obrigacao.status)}</span>
         <div className="flex-1 min-w-0 flex flex-col justify-center">
-          <div className="font-semibold text-xs truncate leading-tight">{obrigacao.titulo}</div>
+          <div className="flex items-center gap-1">
+            <div className="font-semibold text-xs truncate leading-tight">{obrigacao.titulo}</div>
+            {obrigacao.recorrencia && obrigacao.recorrencia.ativo !== false && (
+              <span className="text-[10px] bg-green-500/20 text-green-700 dark:text-green-300 px-1 py-0.5 rounded flex-shrink-0" title="Recorrência automática ativa">
+                🔄
+              </span>
+            )}
+          </div>
           {(isWeekView || eventInfo.view.type === 'dayGridMonth') && obrigacao.cliente && (
             <div className="text-[10px] opacity-90 truncate leading-tight">
               👤 {obrigacao.cliente}
