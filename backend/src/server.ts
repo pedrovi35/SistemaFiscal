@@ -8,6 +8,7 @@ import { Server as SocketIOServer } from 'socket.io';
 import dotenv from 'dotenv';
 import { initializeDatabase, closeDatabase } from './config/database';
 import routes from './routes';
+import recorrenciaJob from './jobs/recorrenciaJob';
 
 // Carregar variáveis de ambiente
 dotenv.config();
@@ -212,6 +213,9 @@ async function iniciar() {
     // Inicializar banco
     await initializeDatabase();
 
+    // Iniciar job de recorrência automática
+    recorrenciaJob.iniciar();
+
     // Iniciar servidor
     httpServer.listen(PORT, () => {
       console.log('');
@@ -245,6 +249,7 @@ process.on('uncaughtException', (error) => {
 // Graceful shutdown
 async function shutdown() {
   console.log('🛑 Encerrando servidor...');
+  recorrenciaJob.parar();
   httpServer.close(async () => {
     await closeDatabase();
     console.log('✅ Servidor encerrado com sucesso');

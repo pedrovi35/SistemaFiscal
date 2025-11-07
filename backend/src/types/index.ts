@@ -47,9 +47,12 @@ export enum TipoRecorrencia {
 export interface Recorrencia {
   tipo: TipoRecorrencia;
   intervalo?: number; // Para customizada
-  diaDoMes?: number; // Dia específico do mês (1-31)
+  diaDoMes?: number; // Dia específico do mês (1-31) - DIA FIXO DE VENCIMENTO
   dataFim?: string; // ISO string - quando parar a recorrência
-  proximaOcorrencia?: string; // ISO string
+  proximaOcorrencia?: string; // ISO string - próxima data de criação (dia 1 do mês)
+  ativo?: boolean; // Permitir pausar/retomar recorrência
+  diaGeracao?: number; // Dia do mês para gerar a obrigação (padrão: 1)
+  ultimaGeracao?: string; // ISO string - data da última geração automática
 }
 
 export interface Feriado {

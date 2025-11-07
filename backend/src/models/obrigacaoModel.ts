@@ -271,39 +271,139 @@ export class ObrigacaoModel {
   // Salvar recorrência
   private async salvarRecorrencia(obrigacaoId: string, recorrencia: Recorrencia) {
     const agora = new Date().toISOString();
-    await db.run(`
-      INSERT INTO recorrencias (obrigacao_id, tipo, intervalo, dia_do_mes, mes_do_ano, criada_em)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `, [
-      obrigacaoId,
-      recorrencia.tipo,
-      recorrencia.intervalo || null,
-      recorrencia.diaDoMes || null,
-      null, // mes_do_ano - não está sendo usado atualmente
-      agora
-    ]);
+    
+    // Verificar quais colunas existem na tabela recorrencias
+    const colunasRecorrencia = await this.verificarColunasRecorrencia();
+    
+    const campos = ['obrigacao_id', 'tipo', 'criada_em'];
+    const placeholders = ['?', '?', '?'];
+    const valores: any[] = [obrigacaoId, recorrencia.tipo, agora];
+    
+    // Campos opcionais
+    if (colunasRecorrencia.includes('intervalo')) {
+      campos.push('intervalo');
+      placeholders.push('?');
+      valores.push(recorrencia.intervalo || null);
+    }
+    
+    if (colunasRecorrencia.includes('dia_do_mes')) {
+      campos.push('dia_do_mes');
+      placeholders.push('?');
+      valores.push(recorrencia.diaDoMes || null);
+    }
+    
+    if (colunasRecorrencia.includes('ativo')) {
+      campos.push('ativo');
+      placeholders.push('?');
+      valores.push(recorrencia.ativo !== false);
+    }
+    
+    if (colunasRecorrencia.includes('dia_geracao')) {
+      campos.push('dia_geracao');
+      placeholders.push('?');
+      valores.push(recorrencia.diaGeracao || 1);
+    }
+    
+    if (colunasRecorrencia.includes('data_fim')) {
+      campos.push('data_fim');
+      placeholders.push('?');
+      valores.push(recorrencia.dataFim || null);
+    }
+    
+    if (colunasRecorrencia.includes('ultima_geracao')) {
+      campos.push('ultima_geracao');
+      placeholders.push('?');
+      valores.push(recorrencia.ultimaGeracao || null);
+    }
+    
+    const query = `
+      INSERT INTO recorrencias (${campos.join(', ')}) 
+      VALUES (${placeholders.join(', ')})
+    `;
+    
+    await db.run(query, valores);
+  }
+  
+  // Verificar colunas da tabela recorrencias
+  private async verificarColunasRecorrencia(): Promise<string[]> {
+    try {
+      const result = await db.all(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'recorrencias'
+      `, []);
+      
+      return result.map((row: any) => row.column_name);
+    } catch (error) {
+      // Lista padrão se não conseguir consultar
+      return ['id', 'obrigacao_id', 'tipo', 'intervalo', 'dia_do_mes', 'criada_em'];
+    }
   }
 
   // Atualizar recorrência
   private async atualizarRecorrencia(obrigacaoId: string, recorrencia: Recorrencia) {
     const agora = new Date().toISOString();
-    // PostgreSQL: usar UPSERT com ON CONFLICT
-    await db.run(`
-      INSERT INTO recorrencias (obrigacao_id, tipo, intervalo, dia_do_mes, mes_do_ano, criada_em)
-      VALUES (?, ?, ?, ?, ?, ?)
+    const colunasRecorrencia = await this.verificarColunasRecorrencia();
+    
+    // Construir campos do INSERT
+    const campos = ['obrigacao_id', 'tipo', 'criada_em'];
+    const placeholders = ['?', '?', '?'];
+    const valores: any[] = [obrigacaoId, recorrencia.tipo, agora];
+    
+    // Construir campos do UPDATE
+    const camposUpdate: string[] = ['tipo = EXCLUDED.tipo'];
+    
+    // Campos opcionais
+    if (colunasRecorrencia.includes('intervalo')) {
+      campos.push('intervalo');
+      placeholders.push('?');
+      valores.push(recorrencia.intervalo || null);
+      camposUpdate.push('intervalo = EXCLUDED.intervalo');
+    }
+    
+    if (colunasRecorrencia.includes('dia_do_mes')) {
+      campos.push('dia_do_mes');
+      placeholders.push('?');
+      valores.push(recorrencia.diaDoMes || null);
+      camposUpdate.push('dia_do_mes = EXCLUDED.dia_do_mes');
+    }
+    
+    if (colunasRecorrencia.includes('ativo')) {
+      campos.push('ativo');
+      placeholders.push('?');
+      valores.push(recorrencia.ativo !== undefined ? recorrencia.ativo : true);
+      camposUpdate.push('ativo = EXCLUDED.ativo');
+    }
+    
+    if (colunasRecorrencia.includes('dia_geracao')) {
+      campos.push('dia_geracao');
+      placeholders.push('?');
+      valores.push(recorrencia.diaGeracao || 1);
+      camposUpdate.push('dia_geracao = EXCLUDED.dia_geracao');
+    }
+    
+    if (colunasRecorrencia.includes('data_fim')) {
+      campos.push('data_fim');
+      placeholders.push('?');
+      valores.push(recorrencia.dataFim || null);
+      camposUpdate.push('data_fim = EXCLUDED.data_fim');
+    }
+    
+    if (colunasRecorrencia.includes('ultima_geracao')) {
+      campos.push('ultima_geracao');
+      placeholders.push('?');
+      valores.push(recorrencia.ultimaGeracao || null);
+      camposUpdate.push('ultima_geracao = EXCLUDED.ultima_geracao');
+    }
+    
+    const query = `
+      INSERT INTO recorrencias (${campos.join(', ')}) 
+      VALUES (${placeholders.join(', ')})
       ON CONFLICT (obrigacao_id) DO UPDATE SET
-        tipo = EXCLUDED.tipo,
-        intervalo = EXCLUDED.intervalo,
-        dia_do_mes = EXCLUDED.dia_do_mes,
-        mes_do_ano = EXCLUDED.mes_do_ano
-    `, [
-      obrigacaoId,
-      recorrencia.tipo,
-      recorrencia.intervalo || null,
-      recorrencia.diaDoMes || null,
-      null, // mes_do_ano
-      agora
-    ]);
+        ${camposUpdate.join(', ')}
+    `;
+    
+    await db.run(query, valores);
   }
 
   // Buscar recorrência
@@ -317,8 +417,11 @@ export class ObrigacaoModel {
         tipo: rec.tipo,
         intervalo: rec.intervalo || undefined,
         diaDoMes: rec.dia_do_mes || rec.diaDoMes || undefined,
-        dataFim: undefined, // dataFim não existe na tabela atual
-        proximaOcorrencia: undefined // proximaOcorrencia não existe na tabela atual
+        dataFim: rec.data_fim || rec.dataFim || undefined,
+        proximaOcorrencia: rec.proxima_ocorrencia || rec.proximaOcorrencia || undefined,
+        ativo: rec.ativo !== undefined ? Boolean(rec.ativo) : true,
+        diaGeracao: rec.dia_geracao || rec.diaGeracao || 1,
+        ultimaGeracao: rec.ultima_geracao || rec.ultimaGeracao || undefined
       };
     } catch (error) {
       // Se tabela recorrencias não existir ou houver erro, retorna undefined

@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import obrigacaoModel from '../models/obrigacaoModel';
 import recorrenciaService from '../services/recorrenciaService';
+import recorrenciaAutomaticaService from '../services/recorrenciaAutomaticaService';
 import feriadoService from '../services/feriadoService';
 import { FiltroObrigacoes } from '../types';
 import { parseISO } from 'date-fns';
@@ -334,6 +335,42 @@ export class ObrigacaoController {
     } catch (error) {
       console.error('Erro ao gerar próxima obrigação:', error);
       res.status(500).json({ erro: 'Erro ao gerar próxima obrigação' });
+    }
+  }
+
+  // POST /api/obrigacoes/:id/recorrencia/pausar
+  async pausarRecorrencia(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      await recorrenciaAutomaticaService.pausarRecorrencia(id);
+      res.json({ mensagem: 'Recorrência pausada com sucesso' });
+    } catch (error: any) {
+      console.error('Erro ao pausar recorrência:', error);
+      res.status(500).json({ erro: error.message });
+    }
+  }
+
+  // POST /api/obrigacoes/:id/recorrencia/retomar
+  async retomarRecorrencia(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      await recorrenciaAutomaticaService.retomarRecorrencia(id);
+      res.json({ mensagem: 'Recorrência retomada com sucesso' });
+    } catch (error: any) {
+      console.error('Erro ao retomar recorrência:', error);
+      res.status(500).json({ erro: error.message });
+    }
+  }
+
+  // GET /api/obrigacoes/:id/recorrencia/historico
+  async buscarHistoricoRecorrencia(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const historico = await recorrenciaAutomaticaService.buscarHistoricoRecorrencia(id);
+      res.json(historico);
+    } catch (error) {
+      console.error('Erro ao buscar histórico de recorrência:', error);
+      res.status(500).json({ erro: 'Erro ao buscar histórico de recorrência' });
     }
   }
 }

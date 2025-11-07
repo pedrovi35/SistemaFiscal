@@ -15,6 +15,11 @@ router.delete('/obrigacoes/:id', obrigacaoController.deletar.bind(obrigacaoContr
 router.get('/obrigacoes/:id/historico', obrigacaoController.buscarHistorico.bind(obrigacaoController));
 router.post('/obrigacoes/:id/gerar-proxima', obrigacaoController.gerarProxima.bind(obrigacaoController));
 
+// Rotas de recorrência automática
+router.post('/obrigacoes/:id/recorrencia/pausar', obrigacaoController.pausarRecorrencia.bind(obrigacaoController));
+router.post('/obrigacoes/:id/recorrencia/retomar', obrigacaoController.retomarRecorrencia.bind(obrigacaoController));
+router.get('/obrigacoes/:id/recorrencia/historico', obrigacaoController.buscarHistoricoRecorrencia.bind(obrigacaoController));
+
 // Rotas de feriados
 router.get('/feriados/:ano', feriadoController.listarPorAno.bind(feriadoController));
 router.post('/feriados/ajustar-data', feriadoController.ajustarData.bind(feriadoController));
