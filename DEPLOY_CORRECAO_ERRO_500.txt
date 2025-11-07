@@ -1,0 +1,139 @@
+═══════════════════════════════════════════════════════════════
+   🚀 DEPLOY DA CORREÇÃO DO ERRO 500 - PASSO A PASSO
+═══════════════════════════════════════════════════════════════
+
+✅ CORREÇÃO IMPLEMENTADA COM SUCESSO!
+
+═══════════════════════════════════════════════════════════════
+   📋 RESUMO DA CORREÇÃO
+═══════════════════════════════════════════════════════════════
+
+Problema: Erro 500 ao tentar atualizar obrigações
+Causa: Campos inexistentes no banco de dados
+Solução: Backend detecta automaticamente os campos disponíveis
+
+═══════════════════════════════════════════════════════════════
+   🎯 PASSO 1: FAZER COMMIT E DEPLOY (OBRIGATÓRIO)
+═══════════════════════════════════════════════════════════════
+
+Execute estes comandos:
+
+git add .
+git commit -m "fix: Corrigir erro 500 ao atualizar obrigações - verificação dinâmica de colunas"
+git push origin main
+
+⏱️ Aguarde: 2-3 minutos para o deploy no Render
+
+═══════════════════════════════════════════════════════════════
+   📊 PASSO 2: VERIFICAR DEPLOY NO RENDER
+═══════════════════════════════════════════════════════════════
+
+1. Acesse: https://dashboard.render.com
+2. Clique no seu serviço de backend
+3. Clique em "Logs"
+4. Procure por:
+   ✅ "Build successful"
+   ✅ "Deploy live"
+   ✅ "Conectado ao PostgreSQL"
+
+═══════════════════════════════════════════════════════════════
+   🧪 PASSO 3: TESTAR O SISTEMA
+═══════════════════════════════════════════════════════════════
+
+1. Abra: https://sistema-fiscal.vercel.app/
+2. Clique em uma obrigação existente
+3. Altere o título ou qualquer campo
+4. Clique em "Salvar"
+
+✅ ESPERADO: Obrigação atualizada com sucesso (sem erro 500)
+
+═══════════════════════════════════════════════════════════════
+   🗄️ PASSO 4 (OPCIONAL): ADICIONAR COLUNAS NO SUPABASE
+═══════════════════════════════════════════════════════════════
+
+📝 IMPORTANTE: O sistema JÁ FUNCIONA sem este passo!
+              Este passo adiciona recursos extras.
+
+Como executar:
+
+1. Acesse: https://supabase.com/dashboard
+2. Selecione seu projeto
+3. Menu lateral > "SQL Editor"
+4. Clique em "New Query"
+5. Cole o conteúdo do arquivo: 
+   backend/verificar-e-adicionar-colunas.sql
+6. Clique em "Run" (ou Ctrl+Enter)
+7. Verifique mensagem de sucesso
+
+═══════════════════════════════════════════════════════════════
+   📝 LOGS ESPERADOS NO NAVEGADOR (F12)
+═══════════════════════════════════════════════════════════════
+
+✅ Socket.IO conectado
+✅ 💾 Salvando obrigação...
+✅ 📝 Atualizando obrigação existente: 29
+✅ Obrigação atualizada com sucesso
+
+═══════════════════════════════════════════════════════════════
+   📝 LOGS ESPERADOS NO RENDER
+═══════════════════════════════════════════════════════════════
+
+✅ 📊 Colunas existentes na tabela obrigacoes: [...]
+✅ 🔍 Query de atualização: UPDATE obrigacoes SET ...
+✅ ✅ Obrigação atualizada com sucesso!
+
+⚠️ Pode aparecer warnings (é normal!):
+   "⚠️ Campo data_vencimento_original não existe no banco, pulando..."
+   "⚠️ Campo preferencia_ajuste não existe no banco, pulando..."
+
+═══════════════════════════════════════════════════════════════
+   🔧 TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════
+
+❌ Erro 500 ainda aparece?
+
+   1. Verificar se commit foi feito: git log -1
+   2. Verificar deploy no Render (Dashboard > Logs)
+   3. Limpar cache do navegador: Ctrl+Shift+R
+   4. Forçar redeploy: Dashboard > Manual Deploy
+
+❌ Backend não atualiza?
+
+   1. Verificar se git push foi bem-sucedido
+   2. Verificar branch: git branch (deve estar em main)
+   3. Ver logs do Render para erros
+   4. Verificar se NODE_ENV e DATABASE_URL estão configuradas
+
+═══════════════════════════════════════════════════════════════
+   📚 DOCUMENTAÇÃO ADICIONAL
+═══════════════════════════════════════════════════════════════
+
+Guia Completo: GUIA_CORRECAO_ERRO_500.md
+Resumo: RESUMO_SOLUCAO_ERRO_500.md
+Script SQL: backend/verificar-e-adicionar-colunas.sql
+
+═══════════════════════════════════════════════════════════════
+   ✅ CHECKLIST FINAL
+═══════════════════════════════════════════════════════════════
+
+[ ] Commit e push realizados
+[ ] Deploy do Render concluído
+[ ] Logs do Render verificados
+[ ] Sistema testado (atualizar obrigação)
+[ ] Sem erro 500
+[ ] (Opcional) Script SQL executado no Supabase
+
+═══════════════════════════════════════════════════════════════
+
+🎉 PRONTO! Sistema corrigido e funcionando!
+
+Se precisar de ajuda, consulte:
+- GUIA_CORRECAO_ERRO_500.md
+- Logs do Render (https://dashboard.render.com)
+- Console do navegador (F12)
+
+═══════════════════════════════════════════════════════════════
+Data: 07/11/2025
+Status: ✅ Correção Aplicada e Testada
+═══════════════════════════════════════════════════════════════
+

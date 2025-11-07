@@ -4,48 +4,83 @@ import { Obrigacao, Recorrencia, FiltroObrigacoes, HistoricoAlteracao } from '..
 export class ObrigacaoModel {
   // Criar obrigação
   async criar(obrigacao: Omit<Obrigacao, 'id' | 'criadoEm' | 'atualizadoEm'>): Promise<Obrigacao> {
-    const agora = new Date().toISOString();
+    try {
+      const agora = new Date().toISOString();
 
-    // PostgreSQL: usar RETURNING para obter o ID
-    const result = await db.get(`
-      INSERT INTO obrigacoes (
-        titulo, descricao, data_vencimento, data_vencimento_original, tipo, status, 
-        cliente_id, empresa, responsavel, ajuste_data_util, preferencia_ajuste,
-        created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      RETURNING id
-    `, [
-      obrigacao.titulo,
-      obrigacao.descricao || null,
-      obrigacao.dataVencimento,
-      obrigacao.dataVencimentoOriginal || obrigacao.dataVencimento, // Garantir que está presente
-      obrigacao.tipo,
-      obrigacao.status,
-      null, // cliente_id - será mapeado depois
-      obrigacao.empresa || null,
-      obrigacao.responsavel || null,
-      obrigacao.ajusteDataUtil ? true : false,
-      obrigacao.preferenciaAjuste || 'proximo',
-      agora,
-      agora
-    ]);
+      // Verificar quais colunas existem
+      const colunasExistentes = await this.verificarColunasExistentes();
 
-    const id = result?.id;
+      // Construir INSERT dinamicamente baseado nas colunas existentes
+      const campos: string[] = [];
+      const placeholders: string[] = [];
+      const valores: any[] = [];
 
-    if (!id) {
-      throw new Error('Erro ao criar obrigação: ID não retornado');
+      // Campos obrigatórios que sempre devem existir
+      campos.push('titulo', 'descricao', 'data_vencimento', 'tipo', 'status', 'cliente_id', 'empresa', 'responsavel', 'ajuste_data_util', 'created_at', 'updated_at');
+      placeholders.push('?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?');
+      valores.push(
+        obrigacao.titulo,
+        obrigacao.descricao || null,
+        obrigacao.dataVencimento,
+        obrigacao.tipo,
+        obrigacao.status,
+        null, // cliente_id
+        obrigacao.empresa || null,
+        obrigacao.responsavel || null,
+        obrigacao.ajusteDataUtil ? true : false,
+        agora,
+        agora
+      );
+
+      // Campos opcionais que podem não existir
+      if (colunasExistentes.includes('data_vencimento_original')) {
+        campos.push('data_vencimento_original');
+        placeholders.push('?');
+        valores.push(obrigacao.dataVencimentoOriginal || obrigacao.dataVencimento);
+      }
+
+      if (colunasExistentes.includes('preferencia_ajuste')) {
+        campos.push('preferencia_ajuste');
+        placeholders.push('?');
+        valores.push(obrigacao.preferenciaAjuste || 'proximo');
+      }
+
+      const query = `
+        INSERT INTO obrigacoes (${campos.join(', ')}) 
+        VALUES (${placeholders.join(', ')})
+        RETURNING id
+      `;
+
+      console.log('🔍 Query de criação:', query);
+      console.log('📋 Valores:', valores);
+
+      const result = await db.get(query, valores);
+
+      const id = result?.id;
+
+      if (!id) {
+        throw new Error('Erro ao criar obrigação: ID não retornado');
+      }
+
+      // Salvar recorrência se existir
+      if (obrigacao.recorrencia) {
+        await this.salvarRecorrencia(id, obrigacao.recorrencia);
+      }
+
+      const resultado = await this.buscarPorId(id);
+      if (!resultado) {
+        throw new Error('Erro ao criar obrigação');
+      }
+      return resultado;
+    } catch (error: any) {
+      console.error('❌ Erro ao criar obrigação:', error);
+      console.error('📋 Detalhes:', {
+        obrigacao,
+        message: error.message,
+        code: error.code
+      });
+      throw error;
     }
-
-    // Salvar recorrência se existir
-    if (obrigacao.recorrencia) {
-      await this.salvarRecorrencia(id, obrigacao.recorrencia);
-    }
-
-    const resultado = await this.buscarPorId(id);
-    if (!resultado) {
-      throw new Error('Erro ao criar obrigação');
-    }
-    return resultado;
   }
 
   // Buscar por ID
@@ -138,46 +173,93 @@ export class ObrigacaoModel {
 
   // Atualizar
   async atualizar(id: string, dados: Partial<Obrigacao>): Promise<Obrigacao | undefined> {
-    const campos: string[] = [];
-    const valores: any[] = [];
+    try {
+      const campos: string[] = [];
+      const valores: any[] = [];
 
-    const camposPermitidos = [
-      'titulo', 'descricao', 'dataVencimento', 'dataVencimentoOriginal',
-      'tipo', 'status', 'cliente', 'empresa', 'responsavel',
-      'ajusteDataUtil', 'preferenciaAjuste', 'cor'
-    ];
+      const camposPermitidos = [
+        'titulo', 'descricao', 'dataVencimento', 'dataVencimentoOriginal',
+        'tipo', 'status', 'cliente', 'empresa', 'responsavel',
+        'ajusteDataUtil', 'preferenciaAjuste', 'cor'
+      ];
 
-    const mapeamentoCampos: Record<string, string> = {
-      'dataVencimento': 'data_vencimento',
-      'dataVencimentoOriginal': 'data_vencimento_original',
-      'ajusteDataUtil': 'ajuste_data_util',
-      'preferenciaAjuste': 'preferencia_ajuste'
-    };
+      const mapeamentoCampos: Record<string, string> = {
+        'dataVencimento': 'data_vencimento',
+        'dataVencimentoOriginal': 'data_vencimento_original',
+        'ajusteDataUtil': 'ajuste_data_util',
+        'preferenciaAjuste': 'preferencia_ajuste'
+      };
 
-    for (const campo of camposPermitidos) {
-      if (campo in dados) {
-        const nomeCampo = mapeamentoCampos[campo] || campo;
-        campos.push(`${nomeCampo} = ?`);
-        const valor = (dados as any)[campo];
-        valores.push(campo === 'ajusteDataUtil' ? (valor ? 1 : 0) : valor);
+      // Verificar quais colunas existem no banco antes de tentar atualizar
+      const colunasExistentes = await this.verificarColunasExistentes();
+
+      for (const campo of camposPermitidos) {
+        if (campo in dados) {
+          const nomeCampo = mapeamentoCampos[campo] || campo;
+          
+          // Pular campos que não existem no banco
+          if (!colunasExistentes.includes(nomeCampo)) {
+            console.warn(`⚠️ Campo ${nomeCampo} não existe no banco, pulando...`);
+            continue;
+          }
+
+          campos.push(`${nomeCampo} = ?`);
+          const valor = (dados as any)[campo];
+          valores.push(campo === 'ajusteDataUtil' ? (valor ? 1 : 0) : valor);
+        }
       }
+
+      if (campos.length === 0) return this.buscarPorId(id);
+
+      campos.push('updated_at = ?');
+      valores.push(new Date().toISOString());
+      valores.push(id);
+
+      const query = `UPDATE obrigacoes SET ${campos.join(', ')} WHERE id = ?`;
+      console.log('🔍 Query de atualização:', query);
+      console.log('📋 Valores:', valores);
+      
+      await db.run(query, valores);
+
+      // Atualizar recorrência se existir
+      if (dados.recorrencia) {
+        await this.atualizarRecorrencia(id, dados.recorrencia);
+      }
+
+      return this.buscarPorId(id);
+    } catch (error: any) {
+      console.error('❌ Erro ao atualizar obrigação:', error);
+      console.error('📋 Detalhes:', {
+        id,
+        dados,
+        message: error.message,
+        code: error.code
+      });
+      throw error;
     }
+  }
 
-    if (campos.length === 0) return this.buscarPorId(id);
-
-    campos.push('updated_at = ?');
-    valores.push(new Date().toISOString());
-    valores.push(id);
-
-    const query = `UPDATE obrigacoes SET ${campos.join(', ')} WHERE id = ?`;
-    await db.run(query, valores);
-
-    // Atualizar recorrência se existir
-    if (dados.recorrencia) {
-      await this.atualizarRecorrencia(id, dados.recorrencia);
+  // Verificar quais colunas existem na tabela obrigacoes
+  private async verificarColunasExistentes(): Promise<string[]> {
+    try {
+      const result = await db.all(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'obrigacoes'
+      `, []);
+      
+      const colunas = result.map((row: any) => row.column_name);
+      console.log('📊 Colunas existentes na tabela obrigacoes:', colunas);
+      return colunas;
+    } catch (error) {
+      console.error('⚠️ Erro ao verificar colunas, usando lista padrão:', error);
+      // Lista padrão de colunas que sempre devem existir
+      return [
+        'id', 'titulo', 'descricao', 'data_vencimento', 
+        'tipo', 'status', 'cliente_id', 'empresa', 'responsavel',
+        'ajuste_data_util', 'created_at', 'updated_at'
+      ];
     }
-
-    return this.buscarPorId(id);
   }
 
   // Deletar
