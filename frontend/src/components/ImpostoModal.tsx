@@ -1,13 +1,6 @@
 import { useState } from 'react';
 import { X, Calendar, User, Users, Info } from 'lucide-react';
-import { TipoRecorrencia } from '../types';
-
-interface Recorrencia {
-	tipo: TipoRecorrencia;
-	intervalo?: number;
-	diaDoMes?: number;
-	dataFim?: string;
-}
+import { TipoRecorrencia, NomesTipoRecorrencia, Recorrencia } from '../types';
 
 interface Imposto {
 	id?: string;
@@ -40,8 +33,13 @@ const ImpostoModal: React.FC<ImpostoModalProps> = ({ imposto, onSave, onClose, c
 		return data.split('T')[0];
 	};
 
-	const [tipoRecorrenciaSelecionado, setTipoRecorrenciaSelecionado] = useState<string>(
-		imposto?.recorrencia?.tipo || 'MENSAL'
+	const [mostrarRecorrencia, setMostrarRecorrencia] = useState(!!imposto?.recorrencia);
+	const [recorrencia, setRecorrencia] = useState<Partial<Recorrencia>>(
+		imposto?.recorrencia || {
+			tipo: TipoRecorrencia.MENSAL,
+			ativo: true,
+			diaGeracao: 1
+		}
 	);
 	
 	const [formData, setFormData] = useState<Partial<Imposto>>({
@@ -52,9 +50,6 @@ const ImpostoModal: React.FC<ImpostoModalProps> = ({ imposto, onSave, onClose, c
 		status: imposto?.status || 'PENDENTE',
 		cliente: imposto?.cliente || '',
 		responsavel: imposto?.responsavel || '',
-		recorrencia: imposto?.recorrencia || {
-			tipo: TipoRecorrencia.MENSAL
-		},
 		ajusteDataUtil: imposto?.ajusteDataUtil ?? true,
 		preferenciaAjuste: imposto?.preferenciaAjuste || 'proximo'
 	});
@@ -62,12 +57,20 @@ const ImpostoModal: React.FC<ImpostoModalProps> = ({ imposto, onSave, onClose, c
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		
+		// Garantir que as datas estão no formato correto yyyy-MM-dd
+		const dataVencimentoFormatada = formatarDataParaInput(formData.dataVencimento);
+		
 		// Garantir que todos os campos necessários estão presentes
 		const dadosCompletos = {
 			...formData,
-			dataVencimentoOriginal: formData.dataVencimento,
+			dataVencimento: dataVencimentoFormatada,
+			dataVencimentoOriginal: dataVencimentoFormatada,
 			ajusteDataUtil: formData.ajusteDataUtil ?? true,
-			preferenciaAjuste: formData.preferenciaAjuste || 'proximo'
+			preferenciaAjuste: formData.preferenciaAjuste || 'proximo',
+			recorrencia: mostrarRecorrencia ? {
+				...recorrencia,
+				dataFim: recorrencia.dataFim ? formatarDataParaInput(recorrencia.dataFim) : undefined
+			} as Recorrencia : undefined
 		};
 		
 		await onSave(dadosCompletos);
@@ -77,14 +80,11 @@ const ImpostoModal: React.FC<ImpostoModalProps> = ({ imposto, onSave, onClose, c
 		setFormData(prev => ({ ...prev, [field]: value }));
 	};
 
-	const handleRecorrenciaChange = (tipo: string) => {
-		setTipoRecorrenciaSelecionado(tipo);
-		setFormData(prev => ({
+	const handleRecorrenciaChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+		const { name, value } = e.target;
+		setRecorrencia(prev => ({
 			...prev,
-			recorrencia: {
-				tipo: tipo as TipoRecorrencia,
-				diaDoMes: prev.dataVencimento ? new Date(prev.dataVencimento).getDate() : undefined
-			}
+			[name]: (name === 'intervalo' || name === 'diaDoMes' || name === 'diaGeracao') ? parseInt(value) || undefined : value
 		}));
 	};
 
@@ -259,55 +259,6 @@ const ImpostoModal: React.FC<ImpostoModalProps> = ({ imposto, onSave, onClose, c
 							</div>
 						</div>
 
-					{/* Recorrência */}
-					<div>
-						<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-							🔄 Recorrência *
-						</label>
-						<select
-							value={tipoRecorrenciaSelecionado}
-							onChange={(e) => handleRecorrenciaChange(e.target.value)}
-							className="input-primary"
-							required
-						>
-							<option value="MENSAL">📅 Mensal</option>
-							<option value="BIMESTRAL">📆 Bimestral</option>
-							<option value="TRIMESTRAL">📊 Trimestral</option>
-							<option value="SEMESTRAL">📈 Semestral</option>
-							<option value="ANUAL">🗓️ Anual</option>
-							<option value="CUSTOMIZADA">⚙️ Personalizada</option>
-						</select>
-						<p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-							Define a periodicidade de repetição desta obrigação
-						</p>
-					</div>
-
-					{/* Intervalo Customizado */}
-					{tipoRecorrenciaSelecionado === 'CUSTOMIZADA' && (
-						<div>
-							<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-								Intervalo (meses) *
-							</label>
-							<input
-								type="number"
-								min="1"
-								value={formData.recorrencia?.intervalo || ''}
-								onChange={(e) => setFormData(prev => ({
-									...prev,
-									recorrencia: {
-										...prev.recorrencia!,
-										intervalo: parseInt(e.target.value)
-									}
-								}))}
-								className="input-primary"
-								placeholder="Ex: 4 (para quadrimestral)"
-								required
-							/>
-							<p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-								Número de meses entre cada ocorrência
-							</p>
-						</div>
-					)}
 					</div>
 
 					{/* Ajuste de Data */}
@@ -335,10 +286,170 @@ const ImpostoModal: React.FC<ImpostoModalProps> = ({ imposto, onSave, onClose, c
 										onChange={(e) => handleChange('preferenciaAjuste', e.target.value)}
 										className="input-primary"
 									>
-										<option value="proximo">Dia útil seguinte (segunda)</option>
-										<option value="anterior">Dia útil anterior (sexta)</option>
+										<option value="proximo">⏩ Próximo dia útil (segunda)</option>
+										<option value="anterior">⏪ Dia útil anterior (sexta)</option>
 									</select>
 								</div>
+							</div>
+						)}
+					</div>
+
+					{/* Recorrência Automática */}
+					<div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+						<div className="flex items-center mb-4">
+							<input
+								type="checkbox"
+								checked={mostrarRecorrencia}
+								onChange={(e) => setMostrarRecorrencia(e.target.checked)}
+								className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+							/>
+							<label className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+								🔄 Configurar Recorrência Automática
+							</label>
+						</div>
+
+						{mostrarRecorrencia && (
+							<div className="space-y-6 pl-6 bg-blue-50 dark:bg-gray-900/50 rounded-lg p-4">
+								{/* Informação sobre recorrência */}
+								<div className="text-xs text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+									<p className="font-semibold mb-1">ℹ️ Como funciona:</p>
+									<ul className="list-disc list-inside space-y-1 text-blue-700 dark:text-blue-300">
+										<li>O imposto será criado automaticamente todo dia <strong>{recorrencia.diaGeracao || 1}</strong> do mês</li>
+										<li>Vencimento sempre no dia <strong>{recorrencia.diaDoMes || '(data escolhida)'}</strong></li>
+										<li>Se cair em sábado, domingo ou feriado, ajusta automaticamente</li>
+										<li>Periodicidade: <strong>{NomesTipoRecorrencia[recorrencia.tipo as TipoRecorrencia]}</strong></li>
+									</ul>
+								</div>
+
+								{/* Campos de recorrência */}
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+									<div>
+										<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+											📅 Periodicidade *
+										</label>
+										<select
+											name="tipo"
+											value={recorrencia.tipo}
+											onChange={handleRecorrenciaChange}
+											className="input-primary"
+										>
+											{Object.entries(NomesTipoRecorrencia).map(([key, value]) => (
+												<option key={key} value={key}>{value}</option>
+											))}
+										</select>
+									</div>
+
+									{recorrencia.tipo === TipoRecorrencia.CUSTOMIZADA && (
+										<div>
+											<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+												Intervalo (meses)
+											</label>
+											<input
+												type="number"
+												name="intervalo"
+												value={recorrencia.intervalo || ''}
+												onChange={handleRecorrenciaChange}
+												min="1"
+												placeholder="Ex: 4"
+												className="input-primary"
+											/>
+										</div>
+									)}
+								</div>
+
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+									<div>
+										<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+											📍 Dia Fixo de Vencimento *
+										</label>
+										<input
+											type="number"
+											name="diaDoMes"
+											value={recorrencia.diaDoMes || ''}
+											onChange={handleRecorrenciaChange}
+											min="1"
+											max="31"
+											required={mostrarRecorrencia}
+											placeholder="Ex: 20"
+											className="input-primary"
+										/>
+										<p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+											O imposto sempre vencerá neste dia
+										</p>
+									</div>
+
+									<div>
+										<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+											🗓️ Dia de Geração
+										</label>
+										<input
+											type="number"
+											name="diaGeracao"
+											value={recorrencia.diaGeracao || 1}
+											onChange={handleRecorrenciaChange}
+											min="1"
+											max="31"
+											className="input-primary"
+										/>
+										<p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+											Dia do mês que o sistema criará o imposto
+										</p>
+									</div>
+								</div>
+
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+									<div>
+										<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+											⏰ Data Limite (opcional)
+										</label>
+										<input
+											type="date"
+											name="dataFim"
+											value={recorrencia.dataFim || ''}
+											onChange={handleRecorrenciaChange}
+											className="input-primary"
+										/>
+										<p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+											Quando parar de gerar automaticamente
+										</p>
+									</div>
+
+									<div>
+										<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+											Status Inicial
+										</label>
+										<div className="flex items-center h-10">
+											<input
+												type="checkbox"
+												checked={recorrencia.ativo !== false}
+												onChange={(e) => setRecorrencia(prev => ({ ...prev, ativo: e.target.checked }))}
+												className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+											/>
+											<span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+												{recorrencia.ativo !== false ? '✅ Ativa' : '⏸️ Pausada'}
+											</span>
+										</div>
+									</div>
+								</div>
+
+								{/* Exemplo Visual */}
+								{recorrencia.diaDoMes && (
+									<div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
+										<p className="text-sm font-semibold text-green-700 dark:text-green-400 mb-2">
+											✨ Exemplo de Funcionamento:
+										</p>
+										<div className="text-xs text-green-600 dark:text-green-300 space-y-1">
+											<p>• <strong>Dia {recorrencia.diaGeracao || 1}/12/2025:</strong> Sistema cria imposto com vencimento dia {recorrencia.diaDoMes}/12/2025</p>
+											{recorrencia.tipo === TipoRecorrencia.MENSAL && (
+												<p>• <strong>Dia {recorrencia.diaGeracao || 1}/01/2026:</strong> Sistema cria imposto com vencimento dia {recorrencia.diaDoMes}/01/2026</p>
+											)}
+											{recorrencia.tipo === TipoRecorrencia.TRIMESTRAL && (
+												<p>• <strong>Dia {recorrencia.diaGeracao || 1}/03/2026:</strong> Sistema cria imposto com vencimento dia {recorrencia.diaDoMes}/03/2026</p>
+											)}
+											<p className="text-xs italic mt-2">* Se o dia cair em fim de semana ou feriado, será ajustado automaticamente</p>
+										</div>
+									</div>
+								)}
 							</div>
 						)}
 					</div>
