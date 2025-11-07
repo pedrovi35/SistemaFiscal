@@ -14,7 +14,6 @@ import Relatorios from './components/Relatorios';
 import ExportarDados from './components/ExportarDados';
 import ImportarDados from './components/ImportarDados';
 import Configuracoes from './components/Configuracoes';
-import FiltrosPanel from './components/FiltrosPanel';
 import NotificacaoRealTime, { Notificacao } from './components/NotificacaoRealTime';
 import StatsCard from './components/StatsCard';
 import LoadingSpinner from './components/LoadingSpinner';
@@ -281,7 +280,9 @@ function AppContent() {
   // Atualizar data por drag & drop
   const atualizarData = async (obrigacaoId: string, novaData: string) => {
     try {
-      await obrigacoesApi.atualizar(obrigacaoId, { dataVencimento: novaData });
+      // Garantir formato yyyy-MM-dd
+      const dataFormatada = novaData.includes('T') ? novaData.split('T')[0] : novaData;
+      await obrigacoesApi.atualizar(obrigacaoId, { dataVencimento: dataFormatada });
       adicionarNotificacao('sucesso', '✓ Data atualizada!');
       await carregarObrigacoes();
     } catch (error) {
@@ -439,16 +440,6 @@ function AppContent() {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Coluna principal */}
             <div className="lg:col-span-3 space-y-6">
-              {/* Filtros */}
-              <div className="animate-fadeIn">
-                <FiltrosPanel
-                  filtros={filtros}
-                  onFiltrosChange={setFiltros}
-                  clientes={clientesUnicos}
-                  empresas={empresas}
-                  responsaveis={responsaveis}
-                />
-              </div>
 
               {/* Conteúdo baseado na aba selecionada */}
               {activeTab === 'dashboard' ? (
@@ -530,7 +521,7 @@ function AppContent() {
                 </div>
               ) : activeTab === 'relatorios' ? (
                 <div className="animate-fadeIn">
-                  <Relatorios />
+                  <Relatorios obrigacoes={obrigacoes} />
                 </div>
               ) : null}
             </div>

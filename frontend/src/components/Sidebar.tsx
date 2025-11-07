@@ -122,20 +122,6 @@ const Sidebar: React.FC<SidebarProps> = ({
       color: 'text-purple-600'
     },
     {
-      id: 'filtros_avancados',
-      label: 'Filtros Avançados',
-      icon: Filter,
-      description: 'Configure filtros personalizados',
-      onClick: () => {
-        if (onAbrirFiltros) {
-          onAbrirFiltros();
-        } else {
-          alert('Filtros avançados em breve!');
-        }
-      },
-      color: 'text-orange-600'
-    },
-    {
       id: 'busca_rapida',
       label: 'Busca Rápida',
       icon: Search,
