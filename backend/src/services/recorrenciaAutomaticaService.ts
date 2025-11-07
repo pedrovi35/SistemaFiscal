@@ -1,4 +1,4 @@
-import { parseISO, format, addMonths, isSameDay, isBefore, isAfter, differenceInMonths } from 'date-fns';
+import { parseISO, format, isBefore, differenceInMonths } from 'date-fns';
 import { Obrigacao, TipoRecorrencia, StatusObrigacao } from '../types';
 import obrigacaoModel from '../models/obrigacaoModel';
 import feriadoService from './feriadoService';
