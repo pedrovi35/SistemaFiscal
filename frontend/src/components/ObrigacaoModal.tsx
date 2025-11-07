@@ -35,21 +35,35 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
     return data.split('T')[0];
   };
 
-  const [formData, setFormData] = useState<Partial<Obrigacao>>({
-    titulo: '',
-    descricao: '',
-    dataVencimento: dataInicial || '',
-    tipo: TipoObrigacao.FEDERAL,
-    status: StatusObrigacao.PENDENTE,
-    cliente: '',
-    empresa: '',
-    responsavel: '',
-    ajusteDataUtil: true,
-    preferenciaAjuste: 'proximo',
-    ...obrigacao,
-    // Garantir que as datas estejam no formato correto
-    dataVencimento: formatarDataParaInput(obrigacao?.dataVencimento || dataInicial),
-    dataVencimentoOriginal: formatarDataParaInput(obrigacao?.dataVencimentoOriginal)
+  const [formData, setFormData] = useState<Partial<Obrigacao>>(() => {
+    // Valores padrão
+    const defaults: Partial<Obrigacao> = {
+      titulo: '',
+      descricao: '',
+      tipo: TipoObrigacao.FEDERAL,
+      status: StatusObrigacao.PENDENTE,
+      cliente: '',
+      empresa: '',
+      responsavel: '',
+      ajusteDataUtil: true,
+      preferenciaAjuste: 'proximo'
+    };
+    
+    // Se há obrigação, mesclar com defaults e formatar datas
+    if (obrigacao) {
+      return {
+        ...defaults,
+        ...obrigacao,
+        dataVencimento: formatarDataParaInput(obrigacao.dataVencimento),
+        dataVencimentoOriginal: formatarDataParaInput(obrigacao.dataVencimentoOriginal)
+      };
+    }
+    
+    // Se não há obrigação, usar dataInicial
+    return {
+      ...defaults,
+      dataVencimento: formatarDataParaInput(dataInicial) || ''
+    };
   });
 
   const [mostrarRecorrencia, setMostrarRecorrencia] = useState(!!obrigacao?.recorrencia);
@@ -66,10 +80,18 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
     console.log('📋 Form Data:', formData);
     console.log('🔄 Recorrência?', mostrarRecorrencia, recorrencia);
     
+    // Garantir que as datas estão no formato correto yyyy-MM-dd
+    const dataVencimentoFormatada = formatarDataParaInput(formData.dataVencimento);
+    const dataVencimentoOriginalFormatada = formatarDataParaInput(formData.dataVencimentoOriginal) || dataVencimentoFormatada;
+    
     const dados: Partial<Obrigacao> = {
       ...formData,
-      dataVencimentoOriginal: formData.dataVencimento, // Garantir que está presente
-      recorrencia: mostrarRecorrencia ? recorrencia as Recorrencia : undefined
+      dataVencimento: dataVencimentoFormatada,
+      dataVencimentoOriginal: dataVencimentoOriginalFormatada,
+      recorrencia: mostrarRecorrencia ? {
+        ...recorrencia,
+        dataFim: recorrencia.dataFim ? formatarDataParaInput(recorrencia.dataFim) : undefined
+      } as Recorrencia : undefined
     };
 
     console.log('💾 Dados finais a serem salvos:', dados);

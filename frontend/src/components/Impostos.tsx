@@ -59,13 +59,34 @@ const Impostos: React.FC<ImpostosProps> = ({ clientes = [] }) => {
 		setImpostoSelecionado(undefined);
 	};
 
-	const salvarImposto = async (dados: Partial<ImpostoItem>) => {
+	const salvarImposto = async (dados: any) => {
 		try {
+			// Converter recorrência de objeto para string se necessário
+			let recorrenciaString: 'Mensal' | 'Anual' | 'Personalizado' = 'Mensal';
+			if (dados.recorrencia) {
+				if (typeof dados.recorrencia === 'object' && dados.recorrencia.tipo) {
+					// Converter do formato objeto Recorrencia para string
+					const tipoMap: Record<string, 'Mensal' | 'Anual' | 'Personalizado'> = {
+						'MENSAL': 'Mensal',
+						'ANUAL': 'Anual',
+						'CUSTOMIZADA': 'Personalizado'
+					};
+					recorrenciaString = tipoMap[dados.recorrencia.tipo] || 'Mensal';
+				} else if (typeof dados.recorrencia === 'string') {
+					recorrenciaString = dados.recorrencia as 'Mensal' | 'Anual' | 'Personalizado';
+				}
+			}
+			
+			const dadosConvertidos: Partial<ImpostoItem> = {
+				...dados,
+				recorrencia: recorrenciaString
+			};
+			
 			if (impostoSelecionado?.id) {
-				setImpostos(prev => prev.map(i => i.id === impostoSelecionado.id ? { ...i, ...dados } as ImpostoItem : i));
+				setImpostos(prev => prev.map(i => i.id === impostoSelecionado.id ? { ...i, ...dadosConvertidos } as ImpostoItem : i));
 				alert('✓ Imposto atualizado com sucesso!');
 			} else {
-				const novoImposto: ImpostoItem = { ...dados as ImpostoItem, id: Date.now().toString() };
+				const novoImposto: ImpostoItem = { ...dadosConvertidos as ImpostoItem, id: Date.now().toString() };
 				setImpostos(prev => [...prev, novoImposto]);
 				alert('✓ Imposto criado com sucesso!');
 			}
@@ -204,7 +225,13 @@ const Impostos: React.FC<ImpostosProps> = ({ clientes = [] }) => {
 		{/* Modal */}
 		{modalAberto && (
 			<ImpostoModal
-				imposto={impostoSelecionado}
+				imposto={impostoSelecionado ? {
+					...impostoSelecionado,
+					recorrencia: {
+						tipo: impostoSelecionado.recorrencia === 'Mensal' ? 'MENSAL' : 
+						      impostoSelecionado.recorrencia === 'Anual' ? 'ANUAL' : 'CUSTOMIZADA'
+					} as any
+				} as any : undefined}
 				onSave={salvarImposto}
 				onClose={fecharModal}
 				clientes={clientes}
