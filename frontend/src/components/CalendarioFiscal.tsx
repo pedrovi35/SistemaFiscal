@@ -400,6 +400,8 @@ const CalendarioFiscal: React.FC<CalendarioFiscalProps> = ({
         <ObrigacoesDoDia
           data={dataSelecionada}
           obrigacoes={obrigacoesDoDia}
+          impostos={[]} 
+          parcelamentos={[]}
           onClose={() => setModalDiaAberto(false)}
           onEditar={(obrigacao) => {
             setModalDiaAberto(false);

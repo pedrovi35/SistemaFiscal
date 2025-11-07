@@ -1,10 +1,21 @@
 import React from 'react';
-import { X, Calendar, Edit, Trash2 } from 'lucide-react';
+import { X, Calendar, Edit, Trash2, FileText, BarChart3, Archive } from 'lucide-react';
 import { Obrigacao, StatusObrigacao } from '../types';
+
+interface ItemDia {
+  id: string;
+  titulo: string;
+  tipo: string;
+  status: string;
+  categoria: 'obrigacao' | 'imposto' | 'parcelamento';
+  dados: any;
+}
 
 interface ObrigacoesDoDiaProps {
   data: string;
   obrigacoes: Obrigacao[];
+  impostos?: any[];
+  parcelamentos?: any[];
   onClose: () => void;
   onEditar: (obrigacao: Obrigacao) => void;
   onDeletar: (id: string) => void;
@@ -14,6 +25,8 @@ interface ObrigacoesDoDiaProps {
 const ObrigacoesDoDia: React.FC<ObrigacoesDoDiaProps> = ({
   data,
   obrigacoes,
+  impostos = [],
+  parcelamentos = [],
   onClose,
   onEditar,
   onDeletar,
@@ -25,6 +38,21 @@ const ObrigacoesDoDia: React.FC<ObrigacoesDoDiaProps> = ({
     month: 'long',
     day: 'numeric'
   });
+
+  const totalItens = obrigacoes.length + impostos.length + parcelamentos.length;
+  
+  const getCategoriaIcon = (categoria: string) => {
+    switch (categoria) {
+      case 'obrigacao':
+        return <FileText size={16} className="text-blue-600" />;
+      case 'imposto':
+        return <BarChart3 size={16} className="text-purple-600" />;
+      case 'parcelamento':
+        return <Archive size={16} className="text-gray-600" />;
+      default:
+        return <FileText size={16} />;
+    }
+  };
 
   const getStatusIcon = (status: StatusObrigacao) => {
     switch (status) {
@@ -72,9 +100,9 @@ const ObrigacoesDoDia: React.FC<ObrigacoesDoDiaProps> = ({
               📅 {dataFormatada}
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              {obrigacoes.length === 0 
-                ? 'Nenhuma obrigação neste dia' 
-                : `${obrigacoes.length} obrigação${obrigacoes.length > 1 ? 'ões' : ''}`}
+              {totalItens === 0 
+                ? 'Nenhuma pendência neste dia' 
+                : `${totalItens} pendência${totalItens > 1 ? 's' : ''} (${obrigacoes.length} obrigaç${obrigacoes.length === 1 ? 'ão' : 'ões'}, ${impostos.length} imposto${impostos.length === 1 ? '' : 's'}, ${parcelamentos.length} parcelamento${parcelamentos.length === 1 ? '' : 's'})`}
             </p>
           </div>
           <button
@@ -86,22 +114,31 @@ const ObrigacoesDoDia: React.FC<ObrigacoesDoDiaProps> = ({
           </button>
         </div>
 
-        {/* Lista de Obrigações */}
-        <div className="overflow-y-auto flex-1 p-6 space-y-3 custom-scrollbar">
-          {obrigacoes.length === 0 ? (
+        {/* Lista de Obrigações, Impostos e Parcelamentos */}
+        <div className="overflow-y-auto flex-1 p-6 space-y-6 custom-scrollbar">
+          {totalItens === 0 ? (
             <div className="text-center py-12">
               <div className="text-6xl mb-4">📭</div>
               <p className="text-gray-500 dark:text-gray-400 mb-6">
-                Não há obrigações agendadas para este dia
+                Não há pendências agendadas para este dia
               </p>
               <button
                 onClick={onCriarNova}
                 className="btn-primary px-6 py-3"
               >
-                ✨ Criar Obrigação Neste Dia
+                ✨ Criar Nova Obrigação
               </button>
             </div>
           ) : (
+            <>
+              {/* Obrigações */}
+              {obrigacoes.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                    <FileText size={18} className="text-blue-600" />
+                    Obrigações Fiscais ({obrigacoes.length})
+                  </h3>
+                  <div className="space-y-3">
             <>
               {obrigacoes.map((obrigacao) => (
                 <div
@@ -207,18 +244,109 @@ const ObrigacoesDoDia: React.FC<ObrigacoesDoDiaProps> = ({
                   </div>
                 </div>
               ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Impostos */}
+              {impostos.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                    <BarChart3 size={18} className="text-purple-600" />
+                    Impostos ({impostos.length})
+                  </h3>
+                  <div className="space-y-3">
+                    {impostos.map((imposto) => (
+                      <div
+                        key={imposto.id}
+                        className="border rounded-lg p-4 bg-purple-50 dark:bg-purple-900/10 border-purple-200 dark:border-purple-800 transition-all hover:shadow-md"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-2">
+                              <BarChart3 size={18} className="text-purple-600" />
+                              <h3 className="font-semibold text-gray-900 dark:text-white truncate">
+                                {imposto.titulo}
+                              </h3>
+                              {imposto.recorrencia && (
+                                <span className="text-xs bg-green-500/20 text-green-700 dark:text-green-300 px-2 py-1 rounded-full">
+                                  🔄 Recorrente
+                                </span>
+                              )}
+                            </div>
+                            {imposto.descricao && (
+                              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                {imposto.descricao}
+                              </p>
+                            )}
+                            <div className="flex flex-wrap gap-2 text-xs">
+                              {imposto.cliente && <span className="text-gray-600 dark:text-gray-400">👤 {imposto.cliente}</span>}
+                              <span className={`badge badge-${imposto.tipo?.toLowerCase() || 'outro'}`}>
+                                {imposto.tipo || 'OUTRO'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Parcelamentos */}
+              {parcelamentos.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                    <Archive size={18} className="text-gray-600" />
+                    Parcelamentos ({parcelamentos.length})
+                  </h3>
+                  <div className="space-y-3">
+                    {parcelamentos.map((parcelamento) => (
+                      <div
+                        key={parcelamento.id}
+                        className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-900/10 border-gray-200 dark:border-gray-800 transition-all hover:shadow-md"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Archive size={18} className="text-gray-600" />
+                              <h3 className="font-semibold text-gray-900 dark:text-white truncate">
+                                {parcelamento.titulo}
+                              </h3>
+                            </div>
+                            {parcelamento.descricao && (
+                              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                {parcelamento.descricao}
+                              </p>
+                            )}
+                            <div className="flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-400">
+                              {parcelamento.cliente && <span>👤 {parcelamento.cliente}</span>}
+                              {parcelamento.valorParcela && (
+                                <span>💰 R$ {parseFloat(parcelamento.valorParcela).toFixed(2)}</span>
+                              )}
+                              {parcelamento.parcelaAtual && parcelamento.totalParcelas && (
+                                <span>📊 Parcela {parcelamento.parcelaAtual}/{parcelamento.totalParcelas}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
 
         {/* Footer */}
-        {obrigacoes.length > 0 && (
+        {totalItens > 0 && (
           <div className="flex justify-between gap-3 p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 rounded-b-xl">
             <button
               onClick={onCriarNova}
               className="btn-primary px-6 py-2.5"
             >
-              ✨ Criar Nova Obrigação Neste Dia
+              ✨ Criar Nova Obrigação
             </button>
             <button
               onClick={onClose}
