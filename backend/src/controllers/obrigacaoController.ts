@@ -143,19 +143,27 @@ export class ObrigacaoController {
   // PUT /api/obrigacoes/:id
   async atualizar(req: Request, res: Response): Promise<void> {
     try {
+      console.log('📥 Recebendo requisição para atualizar obrigação');
+      console.log('🆔 ID:', req.params.id);
+      console.log('📋 Dados recebidos:', JSON.stringify(req.body, null, 2));
+      
       const { id } = req.params;
       const dados = req.body;
 
       const obrigacaoExistente = await obrigacaoModel.buscarPorId(id);
       if (!obrigacaoExistente) {
+        console.error('❌ Obrigação não encontrada:', id);
         res.status(404).json({ erro: 'Obrigação não encontrada' });
         return;
       }
 
       // Validar recorrência se existir
       if (dados.recorrencia) {
+        console.log('🔄 Validando recorrência...');
+        
         // Garantir que recorrência é um objeto, não uma string
         if (typeof dados.recorrencia === 'string') {
+          console.error('❌ Recorrência deve ser um objeto, não uma string:', dados.recorrencia);
           res.status(400).json({ 
             erro: 'Formato de recorrência inválido. Esperado objeto com propriedade "tipo"' 
           });
@@ -164,20 +172,49 @@ export class ObrigacaoController {
         
         const validacao = recorrenciaService.validarRecorrencia(dados.recorrencia);
         if (!validacao.valido) {
+          console.error('❌ Recorrência inválida:', validacao.erro);
           res.status(400).json({ erro: validacao.erro });
+          return;
+        }
+        console.log('✅ Recorrência válida');
+      }
+
+      // Ajustar data de vencimento se alterada
+      if (dados.dataVencimento) {
+        console.log('📅 Processando data de vencimento:', dados.dataVencimento);
+        
+        try {
+          // Garantir formato correto da data (yyyy-MM-dd)
+          let dataStr = dados.dataVencimento;
+          if (dataStr.includes('T')) {
+            dataStr = dataStr.split('T')[0];
+          }
+          
+          if (dados.ajusteDataUtil !== false) {
+            console.log('🔧 Ajustando para dia útil...');
+            let dataVencimento = parseISO(dataStr);
+            const direcao: 'proximo' | 'anterior' = (dados.preferenciaAjuste === 'anterior') ? 'anterior' : 'proximo';
+            dataVencimento = await feriadoService.ajustarParaDiaUtil(dataVencimento, direcao);
+            dados.dataVencimento = dataVencimento.toISOString().split('T')[0];
+            console.log('✅ Data ajustada:', dados.dataVencimento);
+          } else {
+            dados.dataVencimento = dataStr;
+          }
+        } catch (dateError: any) {
+          console.error('❌ Erro ao processar data:', dateError.message);
+          res.status(400).json({ erro: 'Formato de data inválido' });
           return;
         }
       }
 
-      // Ajustar data de vencimento se alterada
-      if (dados.dataVencimento && dados.ajusteDataUtil !== false) {
-        let dataVencimento = parseISO(dados.dataVencimento);
-        const direcao: 'proximo' | 'anterior' = (dados.preferenciaAjuste === 'anterior') ? 'anterior' : 'proximo';
-        dataVencimento = await feriadoService.ajustarParaDiaUtil(dataVencimento, direcao);
-        dados.dataVencimento = dataVencimento.toISOString().split('T')[0];
-      }
-
+      console.log('💾 Atualizando obrigação no banco de dados...');
       const obrigacao = await obrigacaoModel.atualizar(id, dados);
+
+      if (!obrigacao) {
+        console.error('❌ Erro ao atualizar: obrigação não retornada');
+        res.status(500).json({ erro: 'Erro ao atualizar obrigação' });
+        return;
+      }
 
       // Detectar mudanças para histórico
       const camposAlterados: Record<string, any> = {};
@@ -192,21 +229,31 @@ export class ObrigacaoController {
 
       // Salvar histórico
       if (Object.keys(camposAlterados).length > 0) {
+        console.log('📝 Salvando histórico...');
         await obrigacaoModel.salvarHistorico({
           obrigacaoId: id,
           usuario: dados.atualizadoPor || 'Sistema',
           tipo: 'UPDATE',
           camposAlterados
         });
+        console.log('✅ Histórico salvo');
       }
 
       // Emitir evento via WebSocket
+      console.log('📡 Emitindo evento via WebSocket...');
       (req as any).io?.emit('obrigacao:updated', obrigacao);
 
+      console.log('✅ Obrigação atualizada com sucesso! Retornando resposta...');
       res.json(obrigacao);
-    } catch (error) {
-      console.error('Erro ao atualizar obrigação:', error);
-      res.status(500).json({ erro: 'Erro ao atualizar obrigação' });
+    } catch (error: any) {
+      console.error('❌ ERRO ao atualizar obrigação:');
+      console.error('📋 Mensagem:', error.message);
+      console.error('📋 Stack:', error.stack);
+      console.error('📋 Código:', error.code);
+      res.status(500).json({ 
+        erro: 'Erro ao atualizar obrigação',
+        detalhes: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   }
 

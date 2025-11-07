@@ -26,6 +26,15 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
   onClose,
   clientes = []
 }) => {
+  // Função helper para converter data ISO para formato yyyy-MM-dd
+  const formatarDataParaInput = (data: string | undefined): string => {
+    if (!data) return '';
+    // Se já está no formato correto (yyyy-MM-dd), retorna
+    if (/^\d{4}-\d{2}-\d{2}$/.test(data)) return data;
+    // Se está no formato ISO (com hora), extrai apenas a data
+    return data.split('T')[0];
+  };
+
   const [formData, setFormData] = useState<Partial<Obrigacao>>({
     titulo: '',
     descricao: '',
@@ -37,7 +46,10 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
     responsavel: '',
     ajusteDataUtil: true,
     preferenciaAjuste: 'proximo',
-    ...obrigacao
+    ...obrigacao,
+    // Garantir que as datas estejam no formato correto
+    dataVencimento: formatarDataParaInput(obrigacao?.dataVencimento || dataInicial),
+    dataVencimentoOriginal: formatarDataParaInput(obrigacao?.dataVencimentoOriginal)
   });
 
   const [mostrarRecorrencia, setMostrarRecorrencia] = useState(!!obrigacao?.recorrencia);
