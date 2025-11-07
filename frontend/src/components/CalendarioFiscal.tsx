@@ -101,6 +101,15 @@ const CalendarioFiscal: React.FC<CalendarioFiscalProps> = ({
     );
   };
 
+  // Função helper para formatar data para formato ISO correto (yyyy-MM-dd)
+  const formatarDataParaCalendario = (data: string): string => {
+    if (!data) return '';
+    // Se já está no formato correto (yyyy-MM-dd), retorna
+    if (/^\d{4}-\d{2}-\d{2}$/.test(data)) return data;
+    // Se está no formato ISO (com hora), extrai apenas a data
+    return data.split('T')[0];
+  };
+
   // Converter obrigações para eventos do FullCalendar
   const events: EventInput[] = obrigacoes.map(obrigacao => {
     const cor = obrigacao.cor || CoresObrigacao[obrigacao.tipo];
@@ -108,7 +117,7 @@ const CalendarioFiscal: React.FC<CalendarioFiscalProps> = ({
     return {
     id: obrigacao.id,
     title: obrigacao.titulo,
-    start: obrigacao.dataVencimento,
+    start: formatarDataParaCalendario(obrigacao.dataVencimento), // Sempre formato yyyy-MM-dd
       allDay: true,
       backgroundColor: cor,
       borderColor: cor,

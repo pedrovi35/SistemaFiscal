@@ -23,15 +23,34 @@ const allowedOrigins: string[] = [
   process.env.CORS_ORIGIN
 ].filter((origin): origin is string => Boolean(origin));
 
+// Configuração especial para Render.com (evita problemas de cold start)
 const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+      // Permitir requisições sem origin (apps mobile, Postman, etc)
+      if (!origin) return callback(null, true);
+      
+      // Verificar se a origem está na lista permitida
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        console.warn(`⚠️ Socket.IO - Origem bloqueada por CORS: ${origin}`);
+        callback(null, false);
+      }
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization']
   },
   transports: ['polling', 'websocket'],
-  allowEIO3: true
+  allowEIO3: true,
+  // Configurações para melhor compatibilidade com Render
+  pingTimeout: 60000,      // 60s antes de considerar desconectado
+  pingInterval: 25000,     // Envia ping a cada 25s
+  upgradeTimeout: 30000,   // 30s para upgrade de transporte
+  maxHttpBufferSize: 1e6,  // 1MB de buffer
+  allowUpgrades: true,     // Permitir upgrade de polling para websocket
+  perMessageDeflate: false // Desabilitar compressão para melhor performance
 });
 
 const PORT = process.env.PORT || 3001;

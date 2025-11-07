@@ -16,12 +16,16 @@ class SocketService {
       // Força usar apenas polling para máxima compatibilidade com Vercel/Render
       transports: ['polling'],
       reconnection: true,
-      reconnectionDelay: 3000,        // Tenta reconectar a cada 3s
-      reconnectionDelayMax: 10000,    // Máximo de 10s entre tentativas
+      reconnectionDelay: 5000,        // Tenta reconectar a cada 5s (aumentado para cold start)
+      reconnectionDelayMax: 15000,    // Máximo de 15s entre tentativas
       reconnectionAttempts: Infinity, // Tenta reconectar indefinidamente
-      timeout: 20000,                 // Timeout de 20s para conexão inicial
+      timeout: 60000,                 // Timeout de 60s para conexão inicial (cold start do Render)
       autoConnect: true,
-      forceNew: false
+      forceNew: false,
+      // Configurações adicionais para melhor estabilidade
+      upgrade: false,                 // Não tentar upgrade para WebSocket
+      rememberUpgrade: false,
+      rejectUnauthorized: false       // Aceitar certificados auto-assinados em dev
     });
 
     this.socket.on('connect', () => {
@@ -36,6 +40,14 @@ class SocketService {
 
     this.socket.on('connect_error', (error) => {
       console.error('❌ Erro de conexão Socket.IO:', error.message);
+      
+      // Se for erro 502, pode ser cold start do Render
+      if (error.message.includes('502') || error.message.includes('Bad Gateway')) {
+        console.log('⏳ Servidor está iniciando (cold start)... Aguarde até 60s');
+      } else if (error.message.includes('CORS')) {
+        console.error('🚫 Erro de CORS - Verifique as configurações do backend');
+      }
+      
       console.log('🔄 Tentando reconectar...');
     });
 

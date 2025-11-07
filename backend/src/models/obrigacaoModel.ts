@@ -9,21 +9,23 @@ export class ObrigacaoModel {
     // PostgreSQL: usar RETURNING para obter o ID
     const result = await db.get(`
       INSERT INTO obrigacoes (
-        titulo, descricao, data_vencimento, tipo, status, 
-        cliente_id, empresa, responsavel, ajuste_data_util,
+        titulo, descricao, data_vencimento, data_vencimento_original, tipo, status, 
+        cliente_id, empresa, responsavel, ajuste_data_util, preferencia_ajuste,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       RETURNING id
     `, [
       obrigacao.titulo,
       obrigacao.descricao || null,
       obrigacao.dataVencimento,
+      obrigacao.dataVencimentoOriginal || obrigacao.dataVencimento, // Garantir que está presente
       obrigacao.tipo,
       obrigacao.status,
       null, // cliente_id - será mapeado depois
       obrigacao.empresa || null,
       obrigacao.responsavel || null,
       obrigacao.ajusteDataUtil ? true : false,
+      obrigacao.preferenciaAjuste || 'proximo',
       agora,
       agora
     ]);
@@ -253,7 +255,7 @@ export class ObrigacaoModel {
         titulo: row.titulo,
         descricao: row.descricao || undefined,
         dataVencimento: row.data_vencimento || row.dataVencimento,
-        dataVencimentoOriginal: row.data_vencimento || row.dataVencimentoOriginal,
+        dataVencimentoOriginal: row.data_vencimento_original || row.dataVencimentoOriginal || row.data_vencimento,
         tipo: row.tipo,
         status: row.status,
         cliente: row.cliente || undefined,
@@ -261,7 +263,7 @@ export class ObrigacaoModel {
         responsavel: row.responsavel || undefined,
         recorrencia: recorrencia,
         ajusteDataUtil: row.ajuste_data_util === true || row.ajusteDataUtil === 1,
-        preferenciaAjuste: 'proximo',
+        preferenciaAjuste: row.preferencia_ajuste || row.preferenciaAjuste || 'proximo',
         cor: row.cor || undefined,
         criadoEm: row.created_at || row.criadoEm,
         atualizadoEm: row.updated_at || row.atualizadoEm,
