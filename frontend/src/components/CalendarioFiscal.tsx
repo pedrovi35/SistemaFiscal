@@ -8,22 +8,28 @@ import { EventInput, EventClickArg, DateSelectArg, EventDropArg, EventContentArg
 import { Calendar, Clock, FileText } from 'lucide-react';
 import { Obrigacao, CoresObrigacao, StatusObrigacao } from '../types';
 import { format } from 'date-fns';
+import ObrigacoesDoDia from './ObrigacoesDoDia';
 
 interface CalendarioFiscalProps {
   obrigacoes: Obrigacao[];
   onEventClick: (obrigacao: Obrigacao) => void;
   onDateSelect: (data: string) => void;
   onEventDrop: (obrigacaoId: string, novaData: string) => void;
+  onDeletarObrigacao: (id: string) => void;
 }
 
 const CalendarioFiscal: React.FC<CalendarioFiscalProps> = ({
   obrigacoes,
   onEventClick,
   onDateSelect,
-  onEventDrop
+  onEventDrop,
+  onDeletarObrigacao
 }) => {
   const calendarRef = useRef<FullCalendar>(null);
   const [view, setView] = useState<'dayGridMonth' | 'timeGridWeek' | 'listWeek'>('dayGridMonth');
+  const [modalDiaAberto, setModalDiaAberto] = useState(false);
+  const [dataSelecionada, setDataSelecionada] = useState<string>('');
+  const [obrigacoesDoDia, setObrigacoesDoDia] = useState<Obrigacao[]>([]);
 
   // Função para obter ícone baseado no status
   const getStatusIcon = (status: StatusObrigacao) => {
@@ -151,7 +157,17 @@ const CalendarioFiscal: React.FC<CalendarioFiscalProps> = ({
 
   const handleDateSelect = (selectInfo: DateSelectArg) => {
     const data = format(selectInfo.start, 'yyyy-MM-dd');
-    onDateSelect(data);
+    
+    // Buscar obrigações deste dia
+    const obrigacoesDia = obrigacoes.filter(o => {
+      const dataObrigacao = formatarDataParaCalendario(o.dataVencimento);
+      return dataObrigacao === data;
+    });
+    
+    // Abrir modal mostrando obrigações do dia
+    setDataSelecionada(data);
+    setObrigacoesDoDia(obrigacoesDia);
+    setModalDiaAberto(true);
     
     // Limpar seleção
     const calendarApi = calendarRef.current?.getApi();
@@ -378,6 +394,27 @@ const CalendarioFiscal: React.FC<CalendarioFiscalProps> = ({
           }}
         />
       </div>
+
+      {/* Modal de Obrigações do Dia */}
+      {modalDiaAberto && (
+        <ObrigacoesDoDia
+          data={dataSelecionada}
+          obrigacoes={obrigacoesDoDia}
+          onClose={() => setModalDiaAberto(false)}
+          onEditar={(obrigacao) => {
+            setModalDiaAberto(false);
+            onEventClick(obrigacao);
+          }}
+          onDeletar={(id) => {
+            onDeletarObrigacao(id);
+            setModalDiaAberto(false);
+          }}
+          onCriarNova={() => {
+            setModalDiaAberto(false);
+            onDateSelect(dataSelecionada);
+          }}
+        />
+      )}
     </div>
   );
 };

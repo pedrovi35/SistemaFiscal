@@ -495,6 +495,7 @@ function AppContent() {
                     onEventClick={abrirModalEditar}
                     onDateSelect={abrirModalCriar}
                     onEventDrop={atualizarData}
+                    onDeletarObrigacao={deletarObrigacao}
                   />
                 </div>
               ) : activeTab === 'obrigacoes' ? (
