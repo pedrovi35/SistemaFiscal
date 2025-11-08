@@ -186,9 +186,6 @@ const ObrigacoesDoDia: React.FC<ObrigacoesDoDiaProps> = ({
                                 </p>
                                 <div className="text-xs text-blue-600 dark:text-blue-400 space-y-0.5">
                                   <p>• Periodicidade: <strong>{obrigacao.recorrencia.tipo}</strong></p>
-                                  {obrigacao.recorrencia.diaDoMes && (
-                                    <p>• Dia fixo de vencimento: <strong>Dia {obrigacao.recorrencia.diaDoMes}</strong></p>
-                                  )}
                                   {obrigacao.recorrencia.diaGeracao && (
                                     <p>• Geração automática: <strong>Dia {obrigacao.recorrencia.diaGeracao} de cada mês</strong></p>
                                   )}

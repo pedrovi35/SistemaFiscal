@@ -85,11 +85,18 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
     const dataVencimentoFormatada = formatarDataParaInput(formData.dataVencimento);
     const dataVencimentoOriginalFormatada = formatarDataParaInput(formData.dataVencimentoOriginal) || dataVencimentoFormatada;
     
+    // Se tem recorrência, extrair o dia da data de vencimento automaticamente
+    let recorrenciaFinal = mostrarRecorrencia ? { ...recorrencia } : undefined;
+    if (recorrenciaFinal && dataVencimentoFormatada) {
+      const dia = new Date(dataVencimentoFormatada + 'T00:00:00').getDate();
+      recorrenciaFinal.diaDoMes = dia;
+    }
+    
     const dados: Partial<Obrigacao> = {
       ...formData,
       dataVencimento: dataVencimentoFormatada,
       dataVencimentoOriginal: dataVencimentoOriginalFormatada,
-      recorrencia: mostrarRecorrencia ? recorrencia as Recorrencia : undefined
+      recorrencia: recorrenciaFinal as Recorrencia | undefined
     };
 
     console.log('💾 Dados finais a serem salvos:', dados);
@@ -361,45 +368,24 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
                   )}
                 </div>
 
-                {/* Configurações de Dias */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      📍 Dia Fixo de Vencimento *
-                    </label>
-                    <input
-                      type="number"
-                      name="diaDoMes"
-                      value={recorrencia.diaDoMes || ''}
-                      onChange={handleRecorrenciaChange}
-                      min="1"
-                      max="31"
-                      placeholder="Ex: 20"
-                      className="input-primary"
-                    />
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      A obrigação sempre vencerá neste dia
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      🗓️ Dia de Geração
-                    </label>
-                    <input
-                      type="number"
-                      name="diaGeracao"
-                      value={recorrencia.diaGeracao || 1}
-                      onChange={handleRecorrenciaChange}
-                      min="1"
-                      max="31"
-                      placeholder="1"
-                      className="input-primary"
-                    />
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Dia do mês que o sistema criará a obrigação
-                    </p>
-                  </div>
+                {/* Configuração de Dia de Geração */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    🗓️ Dia de Geração Automática
+                  </label>
+                  <input
+                    type="number"
+                    name="diaGeracao"
+                    value={recorrencia.diaGeracao || 1}
+                    onChange={handleRecorrenciaChange}
+                    min="1"
+                    max="31"
+                    placeholder="1"
+                    className="input-primary"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    💡 O sistema criará a próxima obrigação neste dia do mês. O vencimento será sempre no dia <strong>{formData.dataVencimento ? new Date(formData.dataVencimento + 'T00:00:00').getDate() : '___'}</strong> (baseado na Data de Vencimento acima)
+                  </p>
                 </div>
 
                 {/* Status de Recorrência */}
