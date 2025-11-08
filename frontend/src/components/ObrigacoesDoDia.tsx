@@ -118,110 +118,110 @@ const ObrigacoesDoDia: React.FC<ObrigacoesDoDiaProps> = ({
                   </h3>
                   <div className="space-y-3">
                     {obrigacoes.map((obrigacao) => (
-                <div
-                  key={obrigacao.id}
-                  className={`border rounded-lg p-4 transition-all hover:shadow-md ${getStatusColor(obrigacao.status)}`}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xl">{getStatusIcon(obrigacao.status)}</span>
-                        <h3 className="font-semibold text-gray-900 dark:text-white truncate">
-                          {obrigacao.titulo}
-                        </h3>
-                        {obrigacao.recorrencia && obrigacao.recorrencia.ativo !== false && (
-                          <span 
-                            className="text-xs bg-green-500/20 text-green-700 dark:text-green-300 px-2 py-1 rounded-full flex items-center gap-1"
-                            title="Recorrência automática ativa"
-                          >
-                            🔄 Recorrente
-                          </span>
-                        )}
-                      </div>
-                      
-                      {obrigacao.descricao && (
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                          {obrigacao.descricao}
-                        </p>
-                      )}
-
-                      <div className="flex flex-wrap gap-3 text-xs text-gray-500 dark:text-gray-400">
-                        {obrigacao.cliente && (
-                          <span className="flex items-center gap-1">
-                            👤 {obrigacao.cliente}
-                          </span>
-                        )}
-                        {obrigacao.empresa && (
-                          <span className="flex items-center gap-1">
-                            🏢 {obrigacao.empresa}
-                          </span>
-                        )}
-                        {obrigacao.responsavel && (
-                          <span className="flex items-center gap-1">
-                            👔 {obrigacao.responsavel}
-                          </span>
-                        )}
-                        <span className={`badge badge-${obrigacao.tipo.toLowerCase()}`}>
-                          {obrigacao.tipo}
-                        </span>
-                      </div>
-
-                      {/* Informações de Ajuste */}
-                      {obrigacao.ajusteDataUtil && (
-                        <div className="mt-2 flex items-center gap-2 text-xs">
-                          <span className="text-blue-600 dark:text-blue-400">
-                            {obrigacao.preferenciaAjuste === 'proximo' ? '⏩' : '⏪'}
-                          </span>
-                          <span className="text-gray-600 dark:text-gray-400">
-                            Ajuste para {obrigacao.preferenciaAjuste === 'proximo' ? 'próximo' : 'anterior'} dia útil
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Informações de Recorrência */}
-                      {obrigacao.recorrencia && (
-                        <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
-                          <p className="text-xs text-blue-700 dark:text-blue-300 font-medium mb-1">
-                            🔄 Recorrência Configurada:
-                          </p>
-                          <div className="text-xs text-blue-600 dark:text-blue-400 space-y-0.5">
-                            <p>• Periodicidade: <strong>{obrigacao.recorrencia.tipo}</strong></p>
-                            {obrigacao.recorrencia.diaDoMes && (
-                              <p>• Dia fixo de vencimento: <strong>Dia {obrigacao.recorrencia.diaDoMes}</strong></p>
+                      <div
+                        key={obrigacao.id}
+                        className={`border rounded-lg p-4 transition-all hover:shadow-md ${getStatusColor(obrigacao.status)}`}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-xl">{getStatusIcon(obrigacao.status)}</span>
+                              <h3 className="font-semibold text-gray-900 dark:text-white truncate">
+                                {obrigacao.titulo}
+                              </h3>
+                              {obrigacao.recorrencia && obrigacao.recorrencia.ativo !== false && (
+                                <span 
+                                  className="text-xs bg-green-500/20 text-green-700 dark:text-green-300 px-2 py-1 rounded-full flex items-center gap-1"
+                                  title="Recorrência automática ativa"
+                                >
+                                  🔄 Recorrente
+                                </span>
+                              )}
+                            </div>
+                            
+                            {obrigacao.descricao && (
+                              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                {obrigacao.descricao}
+                              </p>
                             )}
-                            {obrigacao.recorrencia.diaGeracao && (
-                              <p>• Geração automática: <strong>Dia {obrigacao.recorrencia.diaGeracao} de cada mês</strong></p>
+
+                            <div className="flex flex-wrap gap-3 text-xs text-gray-500 dark:text-gray-400">
+                              {obrigacao.cliente && (
+                                <span className="flex items-center gap-1">
+                                  👤 {obrigacao.cliente}
+                                </span>
+                              )}
+                              {obrigacao.empresa && (
+                                <span className="flex items-center gap-1">
+                                  🏢 {obrigacao.empresa}
+                                </span>
+                              )}
+                              {obrigacao.responsavel && (
+                                <span className="flex items-center gap-1">
+                                  👔 {obrigacao.responsavel}
+                                </span>
+                              )}
+                              <span className={`badge badge-${obrigacao.tipo.toLowerCase()}`}>
+                                {obrigacao.tipo}
+                              </span>
+                            </div>
+
+                            {/* Informações de Ajuste */}
+                            {obrigacao.ajusteDataUtil && (
+                              <div className="mt-2 flex items-center gap-2 text-xs">
+                                <span className="text-blue-600 dark:text-blue-400">
+                                  {obrigacao.preferenciaAjuste === 'proximo' ? '⏩' : '⏪'}
+                                </span>
+                                <span className="text-gray-600 dark:text-gray-400">
+                                  Ajuste para {obrigacao.preferenciaAjuste === 'proximo' ? 'próximo' : 'anterior'} dia útil
+                                </span>
+                              </div>
                             )}
-                            <p>• Status: <strong>{obrigacao.recorrencia.ativo !== false ? '✅ Ativa' : '⏸️ Pausada'}</strong></p>
+
+                            {/* Informações de Recorrência */}
+                            {obrigacao.recorrencia && (
+                              <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
+                                <p className="text-xs text-blue-700 dark:text-blue-300 font-medium mb-1">
+                                  🔄 Recorrência Configurada:
+                                </p>
+                                <div className="text-xs text-blue-600 dark:text-blue-400 space-y-0.5">
+                                  <p>• Periodicidade: <strong>{obrigacao.recorrencia.tipo}</strong></p>
+                                  {obrigacao.recorrencia.diaDoMes && (
+                                    <p>• Dia fixo de vencimento: <strong>Dia {obrigacao.recorrencia.diaDoMes}</strong></p>
+                                  )}
+                                  {obrigacao.recorrencia.diaGeracao && (
+                                    <p>• Geração automática: <strong>Dia {obrigacao.recorrencia.diaGeracao} de cada mês</strong></p>
+                                  )}
+                                  <p>• Status: <strong>{obrigacao.recorrencia.ativo !== false ? '✅ Ativa' : '⏸️ Pausada'}</strong></p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => onEditar(obrigacao)}
+                              className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
+                              title="Editar"
+                            >
+                              <Edit size={18} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (confirm(`Tem certeza que deseja excluir "${obrigacao.titulo}"?`)) {
+                                  onDeletar(obrigacao.id);
+                                }
+                              }}
+                              className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                              title="Excluir"
+                            >
+                              <Trash2 size={18} />
+                            </button>
                           </div>
                         </div>
-                      )}
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => onEditar(obrigacao)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
-                        title="Editar"
-                      >
-                        <Edit size={18} />
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (confirm(`Tem certeza que deseja excluir "${obrigacao.titulo}"?`)) {
-                            onDeletar(obrigacao.id);
-                          }
-                        }}
-                        className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
-                        title="Excluir"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-              ))}
-                    </div>
                 </div>
               )}
 
