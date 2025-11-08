@@ -40,8 +40,7 @@ const ParcelamentoModal: React.FC<ParcelamentoModalProps> = ({ parcelamento, onS
 	const [recorrencia, setRecorrencia] = useState<Partial<Recorrencia>>(
 		parcelamento?.recorrencia || {
 			tipo: TipoRecorrencia.MENSAL,
-			ativo: true,
-			diaGeracao: 1
+			ativo: true
 		}
 	);
 	
@@ -72,10 +71,7 @@ const ParcelamentoModal: React.FC<ParcelamentoModalProps> = ({ parcelamento, onS
 			dataVencimento: dataVencimentoFormatada,
 			ajusteDataUtil: formData.ajusteDataUtil ?? true,
 			preferenciaAjuste: formData.preferenciaAjuste || 'proximo',
-			recorrencia: mostrarRecorrencia ? {
-				...recorrencia,
-				dataFim: recorrencia.dataFim ? formatarDataParaInput(recorrencia.dataFim) : undefined
-			} as Recorrencia : undefined
+			recorrencia: mostrarRecorrencia ? recorrencia as Recorrencia : undefined
 		};
 		
 		await onSave(dadosCompletos);
@@ -89,7 +85,7 @@ const ParcelamentoModal: React.FC<ParcelamentoModalProps> = ({ parcelamento, onS
 		const { name, value } = e.target;
 		setRecorrencia(prev => ({
 			...prev,
-			[name]: (name === 'intervalo' || name === 'diaDoMes' || name === 'diaGeracao') ? parseInt(value) || undefined : value
+			[name]: (name === 'intervalo') ? parseInt(value) || undefined : value
 		}));
 	};
 
@@ -376,10 +372,10 @@ const ParcelamentoModal: React.FC<ParcelamentoModalProps> = ({ parcelamento, onS
 								<div className="text-xs text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
 									<p className="font-semibold mb-1">ℹ️ Como funciona:</p>
 									<ul className="list-disc list-inside space-y-1 text-blue-700 dark:text-blue-300">
-										<li>As parcelas serão criadas automaticamente todo dia <strong>{recorrencia.diaGeracao || 1}</strong> do mês</li>
-										<li>Vencimento sempre no dia <strong>{recorrencia.diaDoMes || '(data escolhida)'}</strong></li>
+										<li>As parcelas serão criadas automaticamente na periodicidade definida</li>
+										<li>Use o "Dia Fixo de Vencimento" para definir quando a parcela vence</li>
+										<li>Use o "Dia de Geração" para definir quando criar a parcela</li>
 										<li>Se cair em sábado, domingo ou feriado, ajusta automaticamente</li>
-										<li>Periodicidade: <strong>{NomesTipoRecorrencia[recorrencia.tipo as TipoRecorrencia]}</strong></li>
 									</ul>
 								</div>
 
@@ -419,6 +415,7 @@ const ParcelamentoModal: React.FC<ParcelamentoModalProps> = ({ parcelamento, onS
 									)}
 								</div>
 
+								{/* Configurações de Dias */}
 								<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 									<div>
 										<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -431,12 +428,11 @@ const ParcelamentoModal: React.FC<ParcelamentoModalProps> = ({ parcelamento, onS
 											onChange={handleRecorrenciaChange}
 											min="1"
 											max="31"
-											required={mostrarRecorrencia}
-											placeholder="Ex: 10"
+											placeholder="Ex: 20"
 											className="input-primary"
 										/>
 										<p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-											As parcelas sempre vencerão neste dia
+											A parcela sempre vencerá neste dia
 										</p>
 									</div>
 
@@ -451,6 +447,7 @@ const ParcelamentoModal: React.FC<ParcelamentoModalProps> = ({ parcelamento, onS
 											onChange={handleRecorrenciaChange}
 											min="1"
 											max="31"
+											placeholder="1"
 											className="input-primary"
 										/>
 										<p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -459,23 +456,8 @@ const ParcelamentoModal: React.FC<ParcelamentoModalProps> = ({ parcelamento, onS
 									</div>
 								</div>
 
+								{/* Status de Recorrência */}
 								<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-									<div>
-										<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-											⏰ Data Limite (opcional)
-										</label>
-										<input
-											type="date"
-											name="dataFim"
-											value={recorrencia.dataFim || ''}
-											onChange={handleRecorrenciaChange}
-											className="input-primary"
-										/>
-										<p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-											Quando parar de gerar automaticamente
-										</p>
-									</div>
-
 									<div>
 										<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
 											Status Inicial
@@ -495,23 +477,26 @@ const ParcelamentoModal: React.FC<ParcelamentoModalProps> = ({ parcelamento, onS
 								</div>
 
 								{/* Exemplo Visual */}
-								{recorrencia.diaDoMes && (
-									<div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
-										<p className="text-sm font-semibold text-green-700 dark:text-green-400 mb-2">
-											✨ Exemplo de Funcionamento:
-										</p>
-										<div className="text-xs text-green-600 dark:text-green-300 space-y-1">
-											<p>• <strong>Dia {recorrencia.diaGeracao || 1}/12/2025:</strong> Sistema cria parcela com vencimento dia {recorrencia.diaDoMes}/12/2025</p>
-											{recorrencia.tipo === TipoRecorrencia.MENSAL && (
-												<p>• <strong>Dia {recorrencia.diaGeracao || 1}/01/2026:</strong> Sistema cria parcela com vencimento dia {recorrencia.diaDoMes}/01/2026</p>
-											)}
-											{recorrencia.tipo === TipoRecorrencia.TRIMESTRAL && (
-												<p>• <strong>Dia {recorrencia.diaGeracao || 1}/03/2026:</strong> Sistema cria parcela com vencimento dia {recorrencia.diaDoMes}/03/2026</p>
-											)}
-											<p className="text-xs italic mt-2">* Se o dia cair em fim de semana ou feriado, será ajustado automaticamente</p>
-										</div>
+								<div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
+									<p className="text-sm font-semibold text-green-700 dark:text-green-400 mb-2">
+										✨ Exemplo de Funcionamento:
+									</p>
+									<div className="text-xs text-green-600 dark:text-green-300 space-y-1">
+										{recorrencia.tipo === TipoRecorrencia.MENSAL && (
+											<p>• <strong>Mensal:</strong> Cria uma nova parcela todo mês, mantendo a mesma data de vencimento</p>
+										)}
+										{recorrencia.tipo === TipoRecorrencia.TRIMESTRAL && (
+											<p>• <strong>Trimestral:</strong> Cria uma nova parcela a cada 3 meses</p>
+										)}
+										{recorrencia.tipo === TipoRecorrencia.SEMESTRAL && (
+											<p>• <strong>Semestral:</strong> Cria uma nova parcela a cada 6 meses</p>
+										)}
+										{recorrencia.tipo === TipoRecorrencia.ANUAL && (
+											<p>• <strong>Anual:</strong> Cria uma nova parcela todo ano</p>
+										)}
+										<p className="text-xs italic mt-2">* Se o dia cair em fim de semana ou feriado, será ajustado automaticamente</p>
 									</div>
-								)}
+								</div>
 							</div>
 						)}
 					</div>

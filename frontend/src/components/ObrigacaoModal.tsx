@@ -70,8 +70,7 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
   const [recorrencia, setRecorrencia] = useState<Partial<Recorrencia>>(
     obrigacao?.recorrencia || {
       tipo: TipoRecorrencia.MENSAL,
-      ativo: true,
-      diaGeracao: 1
+      ativo: true
     }
   );
 
@@ -90,10 +89,7 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
       ...formData,
       dataVencimento: dataVencimentoFormatada,
       dataVencimentoOriginal: dataVencimentoOriginalFormatada,
-      recorrencia: mostrarRecorrencia ? {
-        ...recorrencia,
-        dataFim: recorrencia.dataFim ? formatarDataParaInput(recorrencia.dataFim) : undefined
-      } as Recorrencia : undefined
+      recorrencia: mostrarRecorrencia ? recorrencia as Recorrencia : undefined
     };
 
     console.log('💾 Dados finais a serem salvos:', dados);
@@ -115,7 +111,7 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
     const { name, value } = e.target;
     setRecorrencia(prev => ({
       ...prev,
-      [name]: (name === 'intervalo' || name === 'diaDoMes' || name === 'diaGeracao') ? parseInt(value) || undefined : value
+      [name]: (name === 'intervalo') ? parseInt(value) || undefined : value
     }));
   };
 
@@ -316,10 +312,10 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
                 <div className="text-xs text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
                   <p className="font-semibold mb-1">ℹ️ Como funciona:</p>
                   <ul className="list-disc list-inside space-y-1 text-blue-700 dark:text-blue-300">
-                    <li>A obrigação será criada automaticamente todo dia <strong>{recorrencia.diaGeracao || 1}</strong> do mês</li>
-                    <li>Vencimento sempre no dia <strong>{recorrencia.diaDoMes || '(data escolhida)'}</strong></li>
+                    <li>A obrigação será criada automaticamente na periodicidade definida</li>
+                    <li>Use o "Dia Fixo de Vencimento" para definir quando a obrigação vence</li>
+                    <li>Use o "Dia de Geração" para definir quando criar a obrigação</li>
                     <li>Se cair em sábado, domingo ou feriado, ajusta automaticamente</li>
-                    <li>Periodicidade: <strong>{NomesTipoRecorrencia[recorrencia.tipo as TipoRecorrencia]}</strong></li>
                   </ul>
                 </div>
 
@@ -365,7 +361,7 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
                   )}
                 </div>
 
-                {/* Dia Fixo de Vencimento e Dia de Geração */}
+                {/* Configurações de Dias */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -378,7 +374,6 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
                       onChange={handleRecorrenciaChange}
                       min="1"
                       max="31"
-                      required={mostrarRecorrencia}
                       placeholder="Ex: 20"
                       className="input-primary"
                     />
@@ -398,6 +393,7 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
                       onChange={handleRecorrenciaChange}
                       min="1"
                       max="31"
+                      placeholder="1"
                       className="input-primary"
                     />
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -406,24 +402,8 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
                   </div>
                 </div>
 
-                {/* Data Fim e Status */}
+                {/* Status de Recorrência */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      ⏰ Data Limite (opcional)
-                    </label>
-                    <input
-                      type="date"
-                      name="dataFim"
-                      value={recorrencia.dataFim || ''}
-                      onChange={handleRecorrenciaChange}
-                      className="input-primary"
-                    />
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Quando parar de gerar automaticamente
-                    </p>
-                  </div>
-
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Status Inicial
@@ -446,23 +426,26 @@ const ObrigacaoModal: React.FC<ObrigacaoModalProps> = ({
                 </div>
 
                 {/* Exemplo Visual */}
-                {recorrencia.diaDoMes && (
-                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
-                    <p className="text-sm font-semibold text-green-700 dark:text-green-400 mb-2">
-                      ✨ Exemplo de Funcionamento:
-                    </p>
-                    <div className="text-xs text-green-600 dark:text-green-300 space-y-1">
-                      <p>• <strong>Hoje (01/12/2025):</strong> Sistema cria obrigação com vencimento dia {recorrencia.diaDoMes}/12/2025</p>
-                      {recorrencia.tipo === TipoRecorrencia.MENSAL && (
-                        <p>• <strong>01/01/2026:</strong> Sistema cria obrigação com vencimento dia {recorrencia.diaDoMes}/01/2026</p>
-                      )}
-                      {recorrencia.tipo === TipoRecorrencia.TRIMESTRAL && (
-                        <p>• <strong>01/03/2026:</strong> Sistema cria obrigação com vencimento dia {recorrencia.diaDoMes}/03/2026</p>
-                      )}
-                      <p className="text-xs italic mt-2">* Se o dia cair em fim de semana ou feriado, será ajustado automaticamente</p>
-                    </div>
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                  <p className="text-sm font-semibold text-green-700 dark:text-green-400 mb-2">
+                    ✨ Exemplo de Funcionamento:
+                  </p>
+                  <div className="text-xs text-green-600 dark:text-green-300 space-y-1">
+                    {recorrencia.tipo === TipoRecorrencia.MENSAL && (
+                      <p>• <strong>Mensal:</strong> Cria uma nova obrigação todo mês, mantendo a mesma data de vencimento</p>
+                    )}
+                    {recorrencia.tipo === TipoRecorrencia.TRIMESTRAL && (
+                      <p>• <strong>Trimestral:</strong> Cria uma nova obrigação a cada 3 meses</p>
+                    )}
+                    {recorrencia.tipo === TipoRecorrencia.SEMESTRAL && (
+                      <p>• <strong>Semestral:</strong> Cria uma nova obrigação a cada 6 meses</p>
+                    )}
+                    {recorrencia.tipo === TipoRecorrencia.ANUAL && (
+                      <p>• <strong>Anual:</strong> Cria uma nova obrigação todo ano</p>
+                    )}
+                    <p className="text-xs italic mt-2">* Se o dia cair em fim de semana ou feriado, será ajustado automaticamente</p>
                   </div>
-                )}
+                </div>
               </div>
             )}
           </div>

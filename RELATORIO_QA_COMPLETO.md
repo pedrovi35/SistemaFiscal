@@ -515,3 +515,4 @@ O **Sistema Fiscal** é um projeto de **alta qualidade** com:
 
 *Este relatório foi gerado através de análise automática e manual do código-fonte, estrutura do projeto, documentação e boas práticas de desenvolvimento.*
 
+
