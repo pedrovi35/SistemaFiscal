@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Calendar, FileText, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
+import { FileText, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
 import { ThemeProvider } from './contexts/ThemeContext';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
@@ -18,7 +18,6 @@ import NotificacaoRealTime, { Notificacao } from './components/NotificacaoRealTi
 import StatsCard from './components/StatsCard';
 import LoadingSpinner from './components/LoadingSpinner';
 import BuscaGlobal from './components/BuscaGlobal';
-import PainelAtalhos from './components/PainelAtalhos';
 import { obrigacoesApi } from './services/api';
 import socketService from './services/socket';
 import { Obrigacao, FiltroObrigacoes, StatusObrigacao } from './types';
@@ -427,14 +426,15 @@ function AppContent() {
 
         {/* Main Content */}
         <main className="px-2 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8 animate-fadeIn">
-            <StatsCard title="Total" value={stats.total} icon={Calendar} color="blue" />
-            <StatsCard title="Pendentes" value={stats.pendentes} icon={Clock} color="yellow" />
-            <StatsCard title="Concluídas" value={stats.concluidas} icon={CheckCircle2} color="green" />
-            <StatsCard title="Atrasadas" value={stats.atrasadas} icon={AlertTriangle} color="red" />
-            <StatsCard title="Este Mês" value={stats.esteMes} icon={FileText} color="purple" />
-          </div>
+          {/* Stats Cards - Mais compactos */}
+          {activeTab === 'dashboard' && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6 animate-fadeIn">
+              <StatsCard title="Pendentes" value={stats.pendentes} icon={Clock} color="yellow" />
+              <StatsCard title="Concluídas" value={stats.concluidas} icon={CheckCircle2} color="green" />
+              <StatsCard title="Atrasadas" value={stats.atrasadas} icon={AlertTriangle} color="red" />
+              <StatsCard title="Este Mês" value={stats.esteMes} icon={FileText} color="purple" />
+            </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Coluna principal */}
@@ -442,53 +442,49 @@ function AppContent() {
 
               {/* Conteúdo baseado na aba selecionada */}
               {activeTab === 'dashboard' ? (
-                <div className="animate-fadeIn" style={{ animationDelay: '0.1s' }}>
-                  <div className="card p-6">
-                    <h2 className="text-2xl font-bold mb-6">Dashboard</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="card-gradient p-6">
-                        <h3 className="text-lg font-semibold mb-4">Resumo Geral</h3>
-                        <div className="space-y-3">
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-600 dark:text-gray-400">Total de Obrigações</span>
-                            <span className="text-2xl font-bold text-blue-600">{stats.total}</span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-600 dark:text-gray-400">Pendentes</span>
-                            <span className="text-2xl font-bold text-yellow-600">{stats.pendentes}</span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-600 dark:text-gray-400">Concluídas</span>
-                            <span className="text-2xl font-bold text-green-600">{stats.concluidas}</span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-600 dark:text-gray-400">Atrasadas</span>
-                            <span className="text-2xl font-bold text-red-600">{stats.atrasadas}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="card-gradient p-6">
-                        <h3 className="text-lg font-semibold mb-4">Alertas Críticos</h3>
-                        <div className="space-y-2">
-                          {stats.atrasadas > 0 && (
-                            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                              <span className="text-red-700 dark:text-red-400 font-semibold">
-                                ⚠️ {stats.atrasadas} obrigação(ões) atrasada(s)
-                              </span>
-                            </div>
-                          )}
-                          <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                            <span className="text-yellow-700 dark:text-yellow-400 font-semibold">
-                              📋 {stats.pendentes} obrigação(ões) pendente(s)
+                <div className="animate-fadeIn space-y-4">
+                  {/* Alertas rápidos - apenas se houver */}
+                  {(stats.atrasadas > 0 || stats.pendentes > 0) && (
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      {stats.atrasadas > 0 && (
+                        <div className="flex-1 p-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <AlertTriangle className="text-red-600 dark:text-red-400" size={20} />
+                            <span className="text-red-700 dark:text-red-400 font-semibold">
+                              {stats.atrasadas} obrigação(ões) atrasada(s)
                             </span>
                           </div>
                         </div>
-                      </div>
+                      )}
+                      {stats.pendentes > 0 && (
+                        <div className="flex-1 p-4 bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-500 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <Clock className="text-yellow-600 dark:text-yellow-400" size={20} />
+                            <span className="text-yellow-700 dark:text-yellow-400 font-semibold">
+                              {stats.pendentes} obrigação(ões) pendente(s)
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
+                  )}
+                  
+                  {/* Lista de obrigações direto no dashboard */}
+                  <ListaObrigacoes
+                    obrigacoes={obrigacoesFiltradas}
+                    onEditar={abrirModalEditar}
+                    onDeletar={deletarObrigacao}
+                    onCriar={abrirModalCriar}
+                    onAlterarStatus={(id, novoStatus) => {
+                      const obrigacao = obrigacoes.find(o => o.id === id);
+                      if (obrigacao) {
+                        salvarObrigacao({ ...obrigacao, status: novoStatus });
+                      }
+                    }}
+                  />
                 </div>
               ) : activeTab === 'calendario' ? (
-                <div className="animate-fadeIn" style={{ animationDelay: '0.1s' }}>
+                <div className="animate-fadeIn">
                   <CalendarioFiscal
                     obrigacoes={obrigacoesFiltradas}
                     onEventClick={abrirModalEditar}
@@ -498,7 +494,7 @@ function AppContent() {
                   />
                 </div>
               ) : activeTab === 'obrigacoes' ? (
-                <div className="animate-fadeIn" style={{ animationDelay: '0.1s' }}>
+                <div className="animate-fadeIn" >
                   <ListaObrigacoes
                     obrigacoes={obrigacoesFiltradas}
                     onCriar={() => abrirModalCriar()}
@@ -508,15 +504,15 @@ function AppContent() {
                   />
                 </div>
               ) : activeTab === 'clientes' ? (
-                <div className="animate-fadeIn" style={{ animationDelay: '0.1s' }}>
+                <div className="animate-fadeIn" >
                   <Clientes />
                 </div>
               ) : activeTab === 'impostos' ? (
-                <div className="animate-fadeIn" style={{ animationDelay: '0.1s' }}>
+                <div className="animate-fadeIn" >
                   <Impostos clientes={clientes} />
                 </div>
               ) : activeTab === 'parcelamentos' ? (
-                <div className="animate-fadeIn" style={{ animationDelay: '0.1s' }}>
+                <div className="animate-fadeIn" >
                   <Parcelamentos clientes={clientes} />
                 </div>
               ) : activeTab === 'relatorios' ? (
@@ -529,7 +525,7 @@ function AppContent() {
             {/* Sidebar Right - Informações */}
             <div className="lg:col-span-1 space-y-6">
               {/* Quick Stats */}
-              <div className="card p-6 animate-slideInRight" style={{ animationDelay: '0.1s' }}>
+              <div className="card p-6 animate-slideInRight" >
                 <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                   <FileText size={20} className="text-blue-600" />
                   Resumo Rápido
@@ -576,9 +572,6 @@ function AppContent() {
         obrigacoes={obrigacoes}
         onSelect={abrirModalEditar}
       />
-
-      {/* Painel de Atalhos */}
-      <PainelAtalhos />
 
       {/* Calculadora Fiscal */}
       {calculadoraAberta && (
