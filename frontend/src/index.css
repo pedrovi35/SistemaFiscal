@@ -676,3 +676,410 @@ body {
 .theme-transition-disable * {
   transition: none !important;
 }
+
+/* ========================================
+   MELHORIAS UI/UX ADICIONAIS
+   ======================================== */
+
+/* Bounce in animation for modals */
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-bounceIn {
+  animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* Shake animation for errors */
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-5px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(5px);
+  }
+}
+
+.animate-shake {
+  animation: shake 0.5s;
+}
+
+/* Gradient text */
+.gradient-text {
+  @apply bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent;
+}
+
+.dark .gradient-text {
+  @apply from-blue-400 to-purple-400;
+}
+
+/* Card with glassmorphism */
+.card-glass {
+  @apply backdrop-blur-lg bg-white/80 dark:bg-gray-800/80;
+  @apply border border-white/20 dark:border-gray-700/50;
+  @apply shadow-2xl rounded-2xl;
+}
+
+/* Floating animation */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Button with ripple effect */
+.btn-ripple {
+  @apply relative overflow-hidden;
+}
+
+.btn-ripple::after {
+  content: '';
+  @apply absolute inset-0 opacity-0;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+  transform: scale(0);
+  transition: transform 0.5s, opacity 0.5s;
+}
+
+.btn-ripple:active::after {
+  transform: scale(4);
+  opacity: 1;
+  transition: 0s;
+}
+
+/* Enhanced input with floating label effect */
+.input-float-label {
+  @apply relative;
+}
+
+.input-float-label input:focus + label,
+.input-float-label input:not(:placeholder-shown) + label {
+  @apply -translate-y-7 text-xs text-blue-600 dark:text-blue-400;
+}
+
+.input-float-label label {
+  @apply absolute left-4 top-3 transition-all duration-200 pointer-events-none;
+  @apply text-gray-500 dark:text-gray-400;
+}
+
+/* Toast notification styles */
+.toast {
+  @apply fixed right-4 top-20 z-[9999] max-w-sm;
+  @apply backdrop-blur-lg bg-white/90 dark:bg-gray-800/90;
+  @apply border border-gray-200 dark:border-gray-700;
+  @apply shadow-2xl rounded-xl p-4;
+  @apply flex items-center gap-3;
+  animation: slideInRight 0.3s ease-out;
+}
+
+.toast-success {
+  @apply border-l-4 border-l-green-500;
+}
+
+.toast-error {
+  @apply border-l-4 border-l-red-500;
+}
+
+.toast-info {
+  @apply border-l-4 border-l-blue-500;
+}
+
+.toast-warning {
+  @apply border-l-4 border-l-yellow-500;
+}
+
+/* Progress indicator */
+.progress-ring {
+  transform: rotate(-90deg);
+}
+
+.progress-ring-circle {
+  transition: stroke-dashoffset 0.35s;
+  transform-origin: 50% 50%;
+}
+
+/* Skeleton loader variants */
+.skeleton-text {
+  @apply skeleton h-4 w-full mb-2;
+}
+
+.skeleton-title {
+  @apply skeleton h-8 w-3/4 mb-4;
+}
+
+.skeleton-avatar {
+  @apply skeleton h-12 w-12 rounded-full;
+}
+
+.skeleton-card {
+  @apply skeleton h-48 w-full;
+}
+
+/* Enhanced hover effects for cards */
+.card-interactive {
+  @apply card cursor-pointer transform transition-all duration-300;
+  @apply hover:scale-[1.02] hover:shadow-2xl;
+  @apply active:scale-[0.98];
+}
+
+/* Gradient borders */
+.gradient-border {
+  @apply relative;
+  background: linear-gradient(var(--bg-primary), var(--bg-primary)) padding-box,
+              linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899) border-box;
+  border: 2px solid transparent;
+  border-radius: 12px;
+}
+
+/* Badge with pulse animation */
+.badge-pulse {
+  @apply relative;
+}
+
+.badge-pulse::before {
+  content: '';
+  @apply absolute inset-0 rounded-full;
+  @apply bg-current opacity-75;
+  animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes ping {
+  75%, 100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+/* Improved scrollbar for containers */
+.scrollbar-custom {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(59, 130, 246, 0.3) transparent;
+}
+
+.scrollbar-custom::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-custom::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-custom::-webkit-scrollbar-thumb {
+  @apply bg-blue-500/30 rounded-full;
+  @apply hover:bg-blue-500/50;
+}
+
+/* Empty state illustration */
+.empty-state {
+  @apply flex flex-col items-center justify-center py-12 px-4;
+  @apply text-gray-500 dark:text-gray-400;
+}
+
+.empty-state-icon {
+  @apply text-6xl mb-4 opacity-50;
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Loading dots animation */
+.loading-dots {
+  @apply flex items-center justify-center gap-2;
+}
+
+.loading-dots span {
+  @apply w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.loading-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.loading-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* Chip/Tag component */
+.chip {
+  @apply inline-flex items-center gap-2 px-3 py-1.5;
+  @apply bg-gray-100 dark:bg-gray-700;
+  @apply text-gray-700 dark:text-gray-300;
+  @apply rounded-full text-sm font-medium;
+  @apply transition-all duration-200;
+  @apply hover:bg-gray-200 dark:hover:bg-gray-600;
+}
+
+.chip-removable {
+  @apply pr-1;
+}
+
+.chip-remove-btn {
+  @apply ml-1 w-5 h-5 rounded-full;
+  @apply flex items-center justify-center;
+  @apply hover:bg-gray-300 dark:hover:bg-gray-500;
+  @apply transition-colors;
+}
+
+/* Avatar component */
+.avatar {
+  @apply rounded-full overflow-hidden;
+  @apply bg-gradient-to-br from-blue-500 to-purple-500;
+  @apply flex items-center justify-center;
+  @apply text-white font-semibold;
+}
+
+.avatar-sm {
+  @apply w-8 h-8 text-xs;
+}
+
+.avatar-md {
+  @apply w-12 h-12 text-base;
+}
+
+.avatar-lg {
+  @apply w-16 h-16 text-xl;
+}
+
+/* Divider */
+.divider {
+  @apply relative flex items-center;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  @apply flex-1 border-t border-gray-300 dark:border-gray-600;
+}
+
+.divider span {
+  @apply px-4 text-sm text-gray-500 dark:text-gray-400;
+}
+
+/* Accordion animation */
+.accordion-content {
+  @apply grid transition-all duration-300 ease-in-out;
+  grid-template-rows: 0fr;
+}
+
+.accordion-content.open {
+  grid-template-rows: 1fr;
+}
+
+.accordion-inner {
+  @apply overflow-hidden;
+}
+
+/* Switch toggle enhanced */
+.switch {
+  @apply relative inline-block w-12 h-6;
+}
+
+.switch input {
+  @apply opacity-0 w-0 h-0;
+}
+
+.switch-slider {
+  @apply absolute cursor-pointer inset-0;
+  @apply bg-gray-300 dark:bg-gray-600 rounded-full;
+  @apply transition-all duration-300;
+}
+
+.switch-slider::before {
+  content: '';
+  @apply absolute h-5 w-5 left-0.5 bottom-0.5;
+  @apply bg-white rounded-full;
+  @apply transition-all duration-300;
+  @apply shadow-md;
+}
+
+.switch input:checked + .switch-slider {
+  @apply bg-gradient-to-r from-blue-600 to-blue-700;
+}
+
+.switch input:checked + .switch-slider::before {
+  @apply translate-x-6;
+}
+
+.switch input:focus + .switch-slider {
+  @apply ring-2 ring-blue-500 ring-offset-2;
+}
+
+/* Context menu */
+.context-menu {
+  @apply fixed z-[9999];
+  @apply bg-white dark:bg-gray-800;
+  @apply border border-gray-200 dark:border-gray-700;
+  @apply rounded-lg shadow-2xl;
+  @apply min-w-[200px] py-2;
+  animation: scaleIn 0.15s ease-out;
+}
+
+.context-menu-item {
+  @apply px-4 py-2 cursor-pointer;
+  @apply text-gray-700 dark:text-gray-300;
+  @apply hover:bg-gray-100 dark:hover:bg-gray-700;
+  @apply transition-colors;
+  @apply flex items-center gap-3;
+}
+
+.context-menu-divider {
+  @apply my-2 border-t border-gray-200 dark:border-gray-700;
+}
+
+/* Notification badge */
+.notification-badge {
+  @apply absolute -top-1 -right-1;
+  @apply bg-red-500 text-white;
+  @apply rounded-full w-5 h-5;
+  @apply flex items-center justify-center;
+  @apply text-xs font-bold;
+  @apply ring-2 ring-white dark:ring-gray-800;
+  animation: bounceIn 0.5s;
+}
+
+/* Improved focus states for accessibility */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  @apply outline-none ring-2 ring-blue-500 ring-offset-2;
+  @apply dark:ring-offset-gray-900;
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body {
+    @apply bg-white text-black;
+  }
+  
+  .card {
+    @apply shadow-none border;
+  }
+}
