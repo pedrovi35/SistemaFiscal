@@ -5,7 +5,6 @@ import {
   BarChart3,
   Download,
   Upload,
-  Filter,
   Search,
   BookOpen,
   Calculator,
@@ -33,7 +32,6 @@ interface SidebarProps {
   onAbrirCalculadora?: () => void;
   onAbrirExportar?: () => void;
   onAbrirImportar?: () => void;
-  onAbrirFiltros?: () => void;
   onAbrirDocumentacao?: () => void;
 }
 
@@ -63,7 +61,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   onAbrirCalculadora,
   onAbrirExportar,
   onAbrirImportar,
-  onAbrirFiltros,
   onAbrirDocumentacao
 }) => {
   const [expandedTool, setExpandedTool] = useState<string | null>(null);

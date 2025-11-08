@@ -358,10 +358,10 @@ function AppContent() {
     aplicarFiltros();
   }, [filtros, obrigacoes]);
 
-  // Extrair valores únicos para filtros
-    const clientesUnicos = Array.from(new Set(obrigacoes.map(o => o.cliente).filter(Boolean))) as string[];
-  const empresas = Array.from(new Set(obrigacoes.map(o => o.empresa).filter(Boolean))) as string[];
-  const responsaveis = Array.from(new Set(obrigacoes.map(o => o.responsavel).filter(Boolean))) as string[];
+  // Extrair valores únicos para filtros (comentado - não utilizado no momento)
+  // const clientesUnicos = Array.from(new Set(obrigacoes.map(o => o.cliente).filter(Boolean))) as string[];
+  // const empresas = Array.from(new Set(obrigacoes.map(o => o.empresa).filter(Boolean))) as string[];
+  // const responsaveis = Array.from(new Set(obrigacoes.map(o => o.responsavel).filter(Boolean))) as string[];
 
   // Calcular estatísticas
   const stats = {
@@ -401,7 +401,6 @@ function AppContent() {
         onAbrirCalculadora={() => setCalculadoraAberta(true)}
         onAbrirExportar={() => setExportarAberto(true)}
         onAbrirImportar={() => setImportarAberto(true)}
-        onAbrirFiltros={() => alert('Os filtros já estão disponíveis na página!')}
         onAbrirDocumentacao={() => window.open('https://github.com', '_blank')}
       />
 

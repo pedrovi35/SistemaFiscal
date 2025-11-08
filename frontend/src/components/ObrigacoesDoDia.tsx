@@ -1,15 +1,6 @@
 import React from 'react';
-import { X, Calendar, Edit, Trash2, FileText, BarChart3, Archive } from 'lucide-react';
+import { X, Edit, Trash2, FileText, BarChart3, Archive } from 'lucide-react';
 import { Obrigacao, StatusObrigacao } from '../types';
-
-interface ItemDia {
-  id: string;
-  titulo: string;
-  tipo: string;
-  status: string;
-  categoria: 'obrigacao' | 'imposto' | 'parcelamento';
-  dados: any;
-}
 
 interface ObrigacoesDoDiaProps {
   data: string;
@@ -40,19 +31,6 @@ const ObrigacoesDoDia: React.FC<ObrigacoesDoDiaProps> = ({
   });
 
   const totalItens = obrigacoes.length + impostos.length + parcelamentos.length;
-  
-  const getCategoriaIcon = (categoria: string) => {
-    switch (categoria) {
-      case 'obrigacao':
-        return <FileText size={16} className="text-blue-600" />;
-      case 'imposto':
-        return <BarChart3 size={16} className="text-purple-600" />;
-      case 'parcelamento':
-        return <Archive size={16} className="text-gray-600" />;
-      default:
-        return <FileText size={16} />;
-    }
-  };
 
   const getStatusIcon = (status: StatusObrigacao) => {
     switch (status) {
@@ -139,8 +117,7 @@ const ObrigacoesDoDia: React.FC<ObrigacoesDoDiaProps> = ({
                     Obrigações Fiscais ({obrigacoes.length})
                   </h3>
                   <div className="space-y-3">
-            <>
-              {obrigacoes.map((obrigacao) => (
+                    {obrigacoes.map((obrigacao) => (
                 <div
                   key={obrigacao.id}
                   className={`border rounded-lg p-4 transition-all hover:shadow-md ${getStatusColor(obrigacao.status)}`}
@@ -244,7 +221,7 @@ const ObrigacoesDoDia: React.FC<ObrigacoesDoDiaProps> = ({
                   </div>
                 </div>
               ))}
-                  </div>
+                    </div>
                 </div>
               )}
 

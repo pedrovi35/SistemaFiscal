@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { BarChart3, TrendingUp, FileText, Download, Calendar, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { TrendingUp, FileText, Download, Calendar, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import { Obrigacao, StatusObrigacao } from '../types';
 import { obrigacoesApi } from '../services/api';
 
