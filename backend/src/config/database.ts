@@ -143,6 +143,30 @@ async function verificarESCorrigirSchema() {
         )
       `);
       console.log('✅ Tabela clientes criada com sucesso');
+    } else {
+      // Verificar se a coluna id é do tipo correto (TEXT, não INTEGER)
+      const checkIdType = await pgPool.query(`
+        SELECT data_type 
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+        AND table_name = 'clientes'
+        AND column_name = 'id'
+      `);
+
+      if (checkIdType.rows.length > 0) {
+        const idType = checkIdType.rows[0].data_type;
+        console.log(`ℹ️ Tipo atual da coluna id: ${idType}`);
+
+        if (idType === 'integer' || idType === 'bigint') {
+          console.log('⚠️ Coluna id é INTEGER. Migrando para TEXT (UUID)...');
+          console.log('⚠️ ATENÇÃO: Execute o script migrate_id_to_uuid.sql manualmente no Supabase');
+          console.log('⚠️ A migração automática não é segura para tabelas com dados existentes');
+          // Não fazemos a migração automática aqui porque pode haver dados existentes
+          // O usuário deve executar o script SQL manualmente
+        } else if (idType === 'text' || idType === 'character varying') {
+          console.log('✅ Coluna id já é TEXT (UUID)');
+        }
+      }
     }
 
     // Verificar se a coluna regimeTributario existe na tabela clientes
