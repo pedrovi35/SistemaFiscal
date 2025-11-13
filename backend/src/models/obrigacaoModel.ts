@@ -16,7 +16,12 @@ export class ObrigacaoModel {
       const valores: any[] = [];
 
       // Detectar formato de colunas (camelCase com aspas ou snake_case)
-      const usaCamelCase = colunasExistentes.includes('dataVencimento') || colunasExistentes.includes('"dataVencimento"');
+      // PostgreSQL retorna nomes de colunas sem aspas, então verificamos se existe dataVencimento (camelCase)
+      const usaCamelCase = colunasExistentes.some(col => 
+        col.toLowerCase() === 'datavencimento' || 
+        col === 'dataVencimento' || 
+        col === '"dataVencimento"'
+      );
       
       // Mapear nomes de colunas baseado no formato detectado
       const colDataVencimento = usaCamelCase ? '"dataVencimento"' : 'data_vencimento';
@@ -153,7 +158,11 @@ export class ObrigacaoModel {
       
       // Verificar formato de colunas primeiro
       const colunasExistentes = await this.verificarColunasExistentes();
-      const usaCamelCase = colunasExistentes.includes('dataVencimento') || colunasExistentes.includes('"dataVencimento"');
+      const usaCamelCase = colunasExistentes.some(col => 
+        col.toLowerCase() === 'datavencimento' || 
+        col === 'dataVencimento' || 
+        col === '"dataVencimento"'
+      );
       const colDataVencimento = usaCamelCase ? '"dataVencimento"' : 'data_vencimento';
       
       // Tentar buscar diretamente - se a tabela não existir, o erro será claro
@@ -228,7 +237,11 @@ export class ObrigacaoModel {
 
     // Detectar formato de colunas
     const colunasExistentes = await this.verificarColunasExistentes();
-    const usaCamelCase = colunasExistentes.includes('dataVencimento') || colunasExistentes.includes('"dataVencimento"');
+    const usaCamelCase = colunasExistentes.some(col => 
+      col.toLowerCase() === 'datavencimento' || 
+      col === 'dataVencimento' || 
+      col === '"dataVencimento"'
+    );
     const colDataVencimento = usaCamelCase ? '"dataVencimento"' : 'data_vencimento';
 
     if (filtro.mes !== undefined && filtro.ano !== undefined) {
