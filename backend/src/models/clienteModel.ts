@@ -17,6 +17,9 @@ export class ClienteModel {
   // Criar cliente
   async criar(cliente: Omit<Cliente, 'id' | 'criadoEm' | 'atualizadoEm'>): Promise<Cliente> {
     try {
+      console.log('📥 Iniciando criação de cliente...');
+      console.log('📋 Dados recebidos:', JSON.stringify(cliente, null, 2));
+      
       const id = uuidv4();
       const agora = new Date().toISOString();
 
@@ -35,11 +38,25 @@ export class ClienteModel {
       // PostgreSQL usa BOOLEAN, não INTEGER (1/0)
       const ativo = cliente.ativo !== undefined ? Boolean(cliente.ativo) : true;
 
-      await db.run(`
+      console.log('💾 Valores preparados para inserção:', {
+        id,
+        nome,
+        cnpj,
+        email,
+        telefone,
+        ativo,
+        regimeTributario,
+        agora
+      });
+
+      const query = `
         INSERT INTO clientes (
           id, nome, cnpj, email, telefone, ativo, "regimeTributario", "criadoEm", "atualizadoEm"
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `, [
+      `;
+
+      console.log('🔍 Executando query de inserção...');
+      await db.run(query, [
         id,
         nome,
         cnpj,
@@ -51,27 +68,33 @@ export class ClienteModel {
         agora
       ]);
 
+      console.log('✅ Cliente inserido com sucesso. ID:', id);
+      console.log('🔍 Buscando cliente criado...');
+
       const resultado = await this.buscarPorId(id);
       if (!resultado) {
+        console.error('❌ Cliente criado mas não foi possível recuperar os dados');
         throw new Error('Cliente criado mas não foi possível recuperar os dados');
       }
+      
+      console.log('✅ Cliente criado e recuperado com sucesso');
       return resultado;
     } catch (error: any) {
-      console.error('Erro detalhado ao criar cliente:', {
-        message: error.message,
-        code: error.code,
-        detail: error.detail,
-        constraint: error.constraint,
-        table: error.table,
-        column: error.column,
-        dadosRecebidos: {
-          nome: cliente.nome,
-          cnpj: cliente.cnpj,
-          email: cliente.email,
-          telefone: cliente.telefone,
-          ativo: cliente.ativo,
-          regimeTributario: cliente.regimeTributario
-        }
+      console.error('❌ Erro detalhado ao criar cliente:');
+      console.error('📋 Mensagem:', error.message);
+      console.error('📋 Código:', error.code);
+      console.error('📋 Detalhe:', error.detail);
+      console.error('📋 Constraint:', error.constraint);
+      console.error('📋 Tabela:', error.table);
+      console.error('📋 Coluna:', error.column);
+      console.error('📋 Stack:', error.stack);
+      console.error('📋 Dados recebidos:', {
+        nome: cliente.nome,
+        cnpj: cliente.cnpj,
+        email: cliente.email,
+        telefone: cliente.telefone,
+        ativo: cliente.ativo,
+        regimeTributario: cliente.regimeTributario
       });
       throw error;
     }
@@ -174,16 +197,20 @@ export class ClienteModel {
 
   // Mapear cliente do banco
   private mapearCliente(row: any): Cliente {
+    if (!row) {
+      throw new Error('Dados de cliente inválidos: row ausente');
+    }
+
     return {
-      id: row.id,
-      nome: row.nome,
-      cnpj: row.cnpj || undefined,
-      email: row.email || undefined,
-      telefone: row.telefone || undefined,
-      ativo: row.ativo === 1 || row.ativo === true,
+      id: String(row.id || ''),
+      nome: String(row.nome || ''),
+      cnpj: row.cnpj ? String(row.cnpj) : undefined,
+      email: row.email ? String(row.email) : undefined,
+      telefone: row.telefone ? String(row.telefone) : undefined,
+      ativo: row.ativo === 1 || row.ativo === true || row.ativo === 'true',
       regimeTributario: row.regimeTributario || row["regimeTributario"] || undefined,
-      criadoEm: row.criadoEm || row["criadoEm"],
-      atualizadoEm: row.atualizadoEm || row["atualizadoEm"]
+      criadoEm: row.criadoEm || row["criadoEm"] || new Date().toISOString(),
+      atualizadoEm: row.atualizadoEm || row["atualizadoEm"] || new Date().toISOString()
     };
   }
 }

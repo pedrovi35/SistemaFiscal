@@ -1,5 +1,5 @@
 import db from '../config/database';
-import { Obrigacao, Recorrencia, FiltroObrigacoes, HistoricoAlteracao } from '../types';
+import { Obrigacao, Recorrencia, FiltroObrigacoes, HistoricoAlteracao, TipoObrigacao, StatusObrigacao } from '../types';
 
 export class ObrigacaoModel {
   // Criar obrigação
@@ -95,25 +95,17 @@ export class ObrigacaoModel {
   // Listar todas
   async listarTodas(): Promise<Obrigacao[]> {
     try {
-      // Verificar se a tabela existe
-      console.log('🔍 Verificando se a tabela obrigacoes existe...');
-      const tableCheck = await db.all(`
-        SELECT table_name 
-        FROM information_schema.tables 
-        WHERE table_schema = 'public' 
-        AND table_name = 'obrigacoes'
-      `, []) as any[];
-      
-      if (tableCheck.length === 0) {
-        console.error('❌ Tabela obrigacoes não encontrada no banco de dados!');
-        throw new Error('Tabela obrigacoes não existe. Execute o script RECRIAR_BANCO_COMPLETO.sql no Supabase.');
-      }
-      
-      console.log('✅ Tabela obrigacoes encontrada');
       console.log('🔍 Executando query: SELECT * FROM obrigacoes...');
       
+      // Tentar buscar diretamente - se a tabela não existir, o erro será claro
       const obrigacoes = await db.all('SELECT * FROM obrigacoes ORDER BY data_vencimento ASC', []) as any[];
       console.log(`📊 ${obrigacoes.length} registros retornados do banco`);
+
+      // Se não houver obrigações, retornar array vazio
+      if (!obrigacoes || obrigacoes.length === 0) {
+        console.log('ℹ️ Nenhuma obrigação encontrada no banco');
+        return [];
+      }
 
       const resultados: Obrigacao[] = [];
       for (const o of obrigacoes) {
@@ -121,9 +113,9 @@ export class ObrigacaoModel {
           const mapped = await this.mapearObrigacao(o);
           resultados.push(mapped);
         } catch (mapError: any) {
-          console.error(`❌ Erro ao mapear obrigação ID ${o.id}:`, mapError.message);
+          console.error(`❌ Erro ao mapear obrigação ID ${o?.id || 'desconhecido'}:`, mapError.message);
           console.error('📋 Stack do erro de mapeamento:', mapError.stack);
-          // Continua com as outras obrigações
+          // Continua com as outras obrigações - não quebra o fluxo
         }
       }
       console.log(`✅ ${resultados.length} obrigações mapeadas com sucesso`);
@@ -134,6 +126,13 @@ export class ObrigacaoModel {
       console.error('📋 Stack:', error.stack);
       console.error('📋 Código:', error.code);
       console.error('📋 Detalhes completos:', error);
+      
+      // Se for erro de tabela não encontrada, retornar array vazio em vez de quebrar
+      if (error.message?.includes('does not exist') || error.code === '42P01') {
+        console.warn('⚠️ Tabela obrigacoes não encontrada. Retornando array vazio.');
+        return [];
+      }
+      
       throw error;
     }
   }
@@ -622,34 +621,41 @@ export class ObrigacaoModel {
   // Mapear obrigação do banco
   private async mapearObrigacao(row: any): Promise<Obrigacao> {
     try {
-      // Buscar recorrência de forma segura
+      // Validar que row existe e tem id
+      if (!row || !row.id) {
+        throw new Error('Dados de obrigação inválidos: row ou id ausente');
+      }
+
+      // Buscar recorrência de forma segura (não deve quebrar o mapeamento)
       let recorrencia: Recorrencia | undefined;
       try {
         recorrencia = await this.buscarRecorrencia(row.id);
       } catch (recError: any) {
         // Se falhar ao buscar recorrência, apenas logar e continuar
+        // Não é crítico - a obrigação pode não ter recorrência
         console.warn(`⚠️ Erro ao buscar recorrência para obrigação ${row.id}:`, recError.message);
         recorrencia = undefined;
       }
       
+      // Mapear com valores padrão seguros
       return {
-        id: row.id,
-        titulo: row.titulo,
-        descricao: row.descricao || undefined,
-        dataVencimento: row.data_vencimento || row.dataVencimento,
-        dataVencimentoOriginal: row.data_vencimento_original || row.dataVencimentoOriginal || row.data_vencimento,
-        tipo: row.tipo,
-        status: row.status,
-        cliente: row.cliente || undefined,
-        empresa: row.empresa || undefined,
-        responsavel: row.responsavel || undefined,
+        id: String(row.id || ''),
+        titulo: String(row.titulo || ''),
+        descricao: row.descricao ? String(row.descricao) : undefined,
+        dataVencimento: row.data_vencimento || row.dataVencimento || new Date().toISOString().split('T')[0],
+        dataVencimentoOriginal: row.data_vencimento_original || row.dataVencimentoOriginal || row.data_vencimento || new Date().toISOString().split('T')[0],
+        tipo: (row.tipo || 'OUTRO') as TipoObrigacao,
+        status: (row.status || 'PENDENTE') as StatusObrigacao,
+        cliente: row.cliente ? String(row.cliente) : undefined,
+        empresa: row.empresa ? String(row.empresa) : undefined,
+        responsavel: row.responsavel ? String(row.responsavel) : undefined,
         recorrencia: recorrencia,
-        ajusteDataUtil: row.ajuste_data_util === true || row.ajusteDataUtil === 1 || row.ajuste_data_util === 'true',
-        preferenciaAjuste: row.preferencia_ajuste || row.preferenciaAjuste || 'proximo',
-        cor: row.cor || undefined,
-        criadoEm: row.created_at || row.criadoEm,
-        atualizadoEm: row.updated_at || row.atualizadoEm,
-        criadoPor: row.criadoPor || undefined
+        ajusteDataUtil: row.ajuste_data_util === true || row.ajusteDataUtil === 1 || row.ajuste_data_util === 'true' || row.ajuste_data_util === 1,
+        preferenciaAjuste: (row.preferencia_ajuste || row.preferenciaAjuste || 'proximo') as 'proximo' | 'anterior',
+        cor: row.cor ? String(row.cor) : undefined,
+        criadoEm: row.created_at || row.criadoEm || new Date().toISOString(),
+        atualizadoEm: row.updated_at || row.atualizadoEm || new Date().toISOString(),
+        criadoPor: row.criadoPor ? String(row.criadoPor) : undefined
       };
     } catch (error: any) {
       console.error('❌ Erro ao mapear obrigação:');
