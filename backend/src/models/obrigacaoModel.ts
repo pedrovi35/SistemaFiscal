@@ -15,12 +15,23 @@ export class ObrigacaoModel {
       const placeholders: string[] = [];
       const valores: any[] = [];
 
-      // Campos obrigatórios que sempre devem existir
+      // Detectar formato de colunas (camelCase com aspas ou snake_case)
+      const usaCamelCase = colunasExistentes.includes('dataVencimento') || colunasExistentes.includes('"dataVencimento"');
+      
+      // Mapear nomes de colunas baseado no formato detectado
+      const colDataVencimento = usaCamelCase ? '"dataVencimento"' : 'data_vencimento';
+      const colDataVencimentoOriginal = usaCamelCase ? '"dataVencimentoOriginal"' : 'data_vencimento_original';
+      const colAjusteDataUtil = usaCamelCase ? '"ajusteDataUtil"' : 'ajuste_data_util';
+      const colPreferenciaAjuste = usaCamelCase ? '"preferenciaAjuste"' : 'preferencia_ajuste';
+      const colCreatedAt = usaCamelCase ? '"criadoEm"' : 'created_at';
+      const colUpdatedAt = usaCamelCase ? '"atualizadoEm"' : 'updated_at';
+      
       // Verificar se existe cliente_id ou cliente (nome)
       const temClienteId = colunasExistentes.includes('cliente_id');
-      const temCliente = colunasExistentes.includes('cliente');
+      const temCliente = colunasExistentes.includes('cliente') || colunasExistentes.includes('"cliente"');
       
-      campos.push('titulo', 'descricao', 'data_vencimento', 'tipo', 'status', 'empresa', 'responsavel', 'ajuste_data_util', 'created_at', 'updated_at');
+      // Campos obrigatórios
+      campos.push('titulo', 'descricao', colDataVencimento, 'tipo', 'status', 'empresa', 'responsavel', colAjusteDataUtil, colCreatedAt, colUpdatedAt);
       placeholders.push('?', '?', '?', '?', '?', '?', '?', '?', '?', '?');
       valores.push(
         obrigacao.titulo,
@@ -37,7 +48,8 @@ export class ObrigacaoModel {
       
       // Adicionar cliente (nome) ou cliente_id conforme disponível
       if (temCliente) {
-        campos.push('cliente');
+        const colCliente = usaCamelCase ? '"cliente"' : 'cliente';
+        campos.push(colCliente);
         placeholders.push('?');
         valores.push(obrigacao.cliente || null);
       } else if (temClienteId) {
@@ -47,14 +59,18 @@ export class ObrigacaoModel {
       }
 
       // Campos opcionais que podem não existir
-      if (colunasExistentes.includes('data_vencimento_original')) {
-        campos.push('data_vencimento_original');
+      if (colunasExistentes.includes(colDataVencimentoOriginal.replace(/"/g, '')) || 
+          colunasExistentes.includes('data_vencimento_original') ||
+          colunasExistentes.includes('dataVencimentoOriginal')) {
+        campos.push(colDataVencimentoOriginal);
         placeholders.push('?');
         valores.push(obrigacao.dataVencimentoOriginal || obrigacao.dataVencimento);
       }
 
-      if (colunasExistentes.includes('preferencia_ajuste')) {
-        campos.push('preferencia_ajuste');
+      if (colunasExistentes.includes(colPreferenciaAjuste.replace(/"/g, '')) || 
+          colunasExistentes.includes('preferencia_ajuste') ||
+          colunasExistentes.includes('preferenciaAjuste')) {
+        campos.push(colPreferenciaAjuste);
         placeholders.push('?');
         valores.push(obrigacao.preferenciaAjuste || 'proximo');
       }
@@ -135,8 +151,13 @@ export class ObrigacaoModel {
     try {
       console.log('🔍 Executando query: SELECT * FROM obrigacoes...');
       
+      // Verificar formato de colunas primeiro
+      const colunasExistentes = await this.verificarColunasExistentes();
+      const usaCamelCase = colunasExistentes.includes('dataVencimento') || colunasExistentes.includes('"dataVencimento"');
+      const colDataVencimento = usaCamelCase ? '"dataVencimento"' : 'data_vencimento';
+      
       // Tentar buscar diretamente - se a tabela não existir, o erro será claro
-      const obrigacoes = await db.all('SELECT * FROM obrigacoes ORDER BY data_vencimento ASC', []) as any[];
+      const obrigacoes = await db.all(`SELECT * FROM obrigacoes ORDER BY ${colDataVencimento} ASC`, []) as any[];
       console.log(`📊 ${obrigacoes.length} registros retornados do banco`);
 
       // Se não houver obrigações, retornar array vazio
@@ -205,23 +226,32 @@ export class ObrigacaoModel {
       params.push(filtro.status);
     }
 
+    // Detectar formato de colunas
+    const colunasExistentes = await this.verificarColunasExistentes();
+    const usaCamelCase = colunasExistentes.includes('dataVencimento') || colunasExistentes.includes('"dataVencimento"');
+    const colDataVencimento = usaCamelCase ? '"dataVencimento"' : 'data_vencimento';
+
     if (filtro.mes !== undefined && filtro.ano !== undefined) {
       const mesStr = String(filtro.mes).padStart(2, '0');
-      query += ` AND data_vencimento::TEXT LIKE ?`;
+      if (usaCamelCase) {
+        query += ` AND ${colDataVencimento}::TEXT LIKE ?`;
+      } else {
+        query += ` AND ${colDataVencimento}::TEXT LIKE ?`;
+      }
       params.push(`${filtro.ano}-${mesStr}-%`);
     }
 
     if (filtro.dataInicio) {
-      query += ' AND data_vencimento >= ?';
+      query += ` AND ${colDataVencimento} >= ?`;
       params.push(filtro.dataInicio);
     }
 
     if (filtro.dataFim) {
-      query += ' AND data_vencimento <= ?';
+      query += ` AND ${colDataVencimento} <= ?`;
       params.push(filtro.dataFim);
     }
 
-    query += ' ORDER BY data_vencimento ASC';
+    query += ` ORDER BY ${colDataVencimento} ASC`;
 
     const obrigacoes = await db.all(query, params) as any[];
 
