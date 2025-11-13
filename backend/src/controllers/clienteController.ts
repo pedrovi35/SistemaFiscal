@@ -65,33 +65,68 @@ export class ClienteController {
     try {
       const { nome, cnpj, email, telefone, ativo = true, regimeTributario } = req.body;
 
-      if (!nome) {
-        res.status(400).json({ erro: 'Nome é obrigatório' });
+      // Validação básica
+      if (!nome || typeof nome !== 'string' || nome.trim().length === 0) {
+        res.status(400).json({ erro: 'Nome é obrigatório e deve ser uma string não vazia' });
         return;
       }
 
-      // Verificar se CNPJ já existe
-      if (cnpj) {
-        const clienteExistente = await clienteModel.buscarPorCnpj(cnpj);
-        if (clienteExistente) {
-          res.status(409).json({ erro: 'CNPJ já cadastrado' });
-          return;
+      // Limpar CNPJ (remover formatação) antes de verificar duplicidade
+      const cnpjLimpo = cnpj ? cnpj.replace(/\D/g, '') : null;
+      
+      // Verificar se CNPJ já existe (apenas se foi fornecido)
+      if (cnpjLimpo && cnpjLimpo.length > 0) {
+        try {
+          const clienteExistente = await clienteModel.buscarPorCnpj(cnpjLimpo);
+          if (clienteExistente) {
+            res.status(409).json({ erro: 'CNPJ já cadastrado' });
+            return;
+          }
+        } catch (error: any) {
+          // Se houver erro ao buscar, logar mas continuar (pode ser problema de conexão)
+          console.warn('Aviso ao verificar CNPJ duplicado:', error.message);
         }
       }
 
+      // Criar cliente com dados validados
+      // Armazenar CNPJ sem formatação para facilitar buscas
       const cliente = await clienteModel.criar({
-        nome,
-        cnpj,
-        email,
-        telefone,
-        ativo,
-        regimeTributario
+        nome: nome.trim(),
+        cnpj: cnpjLimpo && cnpjLimpo.length > 0 ? cnpjLimpo : undefined,
+        email: email?.trim() || undefined,
+        telefone: telefone?.trim() || undefined,
+        ativo: Boolean(ativo),
+        regimeTributario: regimeTributario?.trim() || undefined
       });
 
       res.status(201).json(cliente);
-    } catch (error) {
-      console.error('Erro ao criar cliente:', error);
-      res.status(500).json({ erro: 'Erro ao criar cliente' });
+    } catch (error: any) {
+      console.error('Erro ao criar cliente:', {
+        message: error.message,
+        code: error.code,
+        detail: error.detail,
+        constraint: error.constraint,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+
+      // Mensagens de erro mais específicas
+      let mensagemErro = 'Erro ao criar cliente';
+      let statusCode = 500;
+
+      if (error.code === '23505') { // Violação de constraint única (PostgreSQL)
+        mensagemErro = 'CNPJ já cadastrado';
+        statusCode = 409;
+      } else if (error.code === '23502') { // Violação de NOT NULL
+        mensagemErro = 'Campo obrigatório não fornecido';
+        statusCode = 400;
+      } else if (error.message) {
+        mensagemErro = error.message;
+      }
+
+      res.status(statusCode).json({ 
+        erro: mensagemErro,
+        ...(process.env.NODE_ENV === 'development' && { detalhes: error.detail })
+      });
     }
   }
 

@@ -16,30 +16,65 @@ export interface Cliente {
 export class ClienteModel {
   // Criar cliente
   async criar(cliente: Omit<Cliente, 'id' | 'criadoEm' | 'atualizadoEm'>): Promise<Cliente> {
-    const id = uuidv4();
-    const agora = new Date().toISOString();
+    try {
+      const id = uuidv4();
+      const agora = new Date().toISOString();
 
-    await db.run(`
-      INSERT INTO clientes (
-        id, nome, cnpj, email, telefone, ativo, "regimeTributario", "criadoEm", "atualizadoEm"
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      id,
-      cliente.nome,
-      cliente.cnpj || null,
-      cliente.email || null,
-      cliente.telefone || null,
-      cliente.ativo ? 1 : 0,
-      cliente.regimeTributario || null,
-      agora,
-      agora
-    ]);
+      // Validar e limpar dados
+      const nome = (cliente.nome || '').trim();
+      if (!nome) {
+        throw new Error('Nome é obrigatório');
+      }
 
-    const resultado = await this.buscarPorId(id);
-    if (!resultado) {
-      throw new Error('Erro ao criar cliente');
+      // Converter strings vazias para null e limpar valores
+      const cnpj = cliente.cnpj?.trim() || null;
+      const email = cliente.email?.trim() || null;
+      const telefone = cliente.telefone?.trim() || null;
+      const regimeTributario = cliente.regimeTributario?.trim() || null;
+      
+      // PostgreSQL usa BOOLEAN, não INTEGER (1/0)
+      const ativo = cliente.ativo !== undefined ? Boolean(cliente.ativo) : true;
+
+      await db.run(`
+        INSERT INTO clientes (
+          id, nome, cnpj, email, telefone, ativo, "regimeTributario", "criadoEm", "atualizadoEm"
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        id,
+        nome,
+        cnpj,
+        email,
+        telefone,
+        ativo, // PostgreSQL BOOLEAN (true/false)
+        regimeTributario,
+        agora,
+        agora
+      ]);
+
+      const resultado = await this.buscarPorId(id);
+      if (!resultado) {
+        throw new Error('Cliente criado mas não foi possível recuperar os dados');
+      }
+      return resultado;
+    } catch (error: any) {
+      console.error('Erro detalhado ao criar cliente:', {
+        message: error.message,
+        code: error.code,
+        detail: error.detail,
+        constraint: error.constraint,
+        table: error.table,
+        column: error.column,
+        dadosRecebidos: {
+          nome: cliente.nome,
+          cnpj: cliente.cnpj,
+          email: cliente.email,
+          telefone: cliente.telefone,
+          ativo: cliente.ativo,
+          regimeTributario: cliente.regimeTributario
+        }
+      });
+      throw error;
     }
-    return resultado;
   }
 
   // Buscar por ID
@@ -60,14 +95,20 @@ export class ClienteModel {
 
   // Listar apenas ativos
   async listarAtivos(): Promise<Cliente[]> {
-    const clientes = await db.all('SELECT * FROM clientes WHERE ativo = ? ORDER BY nome ASC', [1]) as any[];
+    // PostgreSQL usa BOOLEAN, não INTEGER
+    const clientes = await db.all('SELECT * FROM clientes WHERE ativo = ? ORDER BY nome ASC', [true]) as any[];
 
     return clientes.map(c => this.mapearCliente(c));
   }
 
   // Buscar por CNPJ
   async buscarPorCnpj(cnpj: string): Promise<Cliente | undefined> {
-    const cliente = await db.get('SELECT * FROM clientes WHERE cnpj = ?', [cnpj]) as any;
+    // Limpar CNPJ (remover formatação) para busca
+    // O CNPJ é armazenado sem formatação no banco
+    const cnpjLimpo = cnpj ? cnpj.replace(/\D/g, '') : null;
+    if (!cnpjLimpo || cnpjLimpo.length === 0) return undefined;
+
+    const cliente = await db.get('SELECT * FROM clientes WHERE cnpj = ?', [cnpjLimpo]) as any;
 
     if (!cliente) return undefined;
 
@@ -91,7 +132,15 @@ export class ClienteModel {
           campos.push(`${campo} = ?`);
         }
         const valor = (dados as any)[campo];
-        valores.push(campo === 'ativo' ? (valor ? 1 : 0) : valor);
+        // PostgreSQL usa BOOLEAN, não INTEGER
+        if (campo === 'ativo') {
+          valores.push(Boolean(valor));
+        } else if (typeof valor === 'string') {
+          // Limpar strings vazias
+          valores.push(valor.trim() || null);
+        } else {
+          valores.push(valor);
+        }
       }
     }
 
@@ -109,9 +158,10 @@ export class ClienteModel {
 
   // Deletar (soft delete - marca como inativo)
   async deletar(id: string): Promise<boolean> {
+    // PostgreSQL usa BOOLEAN
     const result = await db.run(
       'UPDATE clientes SET ativo = ?, "atualizadoEm" = ? WHERE id = ?',
-      [0, new Date().toISOString(), id]
+      [false, new Date().toISOString(), id]
     ) as any;
     return result.changes > 0;
   }
