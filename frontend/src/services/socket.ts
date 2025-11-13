@@ -35,10 +35,7 @@ class SocketService {
       rememberUpgrade: false,
       rejectUnauthorized: false,      // Aceitar certificados auto-assinados em dev
       // Configurações para melhor tratamento de erros
-      withCredentials: true,         // Enviar credenciais (necessário para CORS com credentials)
-      // Retry logic melhorado
-      reconnectionDelayFactor: 1.5,  // Aumentar delay exponencialmente
-      randomizationFactor: 0.5       // Adicionar aleatoriedade para evitar thundering herd
+      withCredentials: true         // Enviar credenciais (necessário para CORS com credentials)
     });
 
     this.socket.on('connect', () => {
@@ -76,8 +73,7 @@ class SocketService {
       } else {
         console.error('📋 Detalhes do erro:', {
           message: errorMessage,
-          type: error.type,
-          description: error.description
+          error: error
         });
       }
       

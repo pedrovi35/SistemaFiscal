@@ -43,11 +43,11 @@ const io = new SocketIOServer(httpServer, {
       // Verificar se a origem está na lista permitida
       if (allowedOrigins.indexOf(origin) !== -1) {
         console.log(`✅ Socket.IO - Origem permitida: ${origin}`);
-        callback(null, true);
+        return callback(null, true);
       } else {
         console.warn(`⚠️ Socket.IO - Origem bloqueada por CORS: ${origin}`);
         console.warn(`📋 Origens permitidas: ${allowedOrigins.join(', ')}`);
-        callback(new Error(`Origem ${origin} não permitida por CORS`), false);
+        return callback(new Error(`Origem ${origin} não permitida por CORS`), false);
       }
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -72,7 +72,7 @@ const io = new SocketIOServer(httpServer, {
 const PORT = process.env.PORT || 3001;
 
 // Middleware de CORS manual para garantir headers em todas as respostas
-app.use((req: Request, res: Response, next: NextFunction) => {
+app.use((req: Request, res: Response, next: NextFunction): void => {
   const origin = req.headers.origin;
   
   // Se a origem está permitida, adicionar headers CORS
@@ -89,7 +89,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     
     // Para requisições OPTIONS (preflight), responder imediatamente
     if (req.method === 'OPTIONS') {
-      return res.status(200).end();
+      res.status(200).end();
+      return;
     }
   }
   
@@ -117,11 +118,11 @@ app.use(cors({
     
     if (allowedOrigins.indexOf(origin) !== -1) {
       console.log(`✅ CORS - Origem permitida: ${origin}`);
-      callback(null, true);
+      return callback(null, true);
     } else {
       console.warn(`⚠️ CORS - Origem bloqueada: ${origin}`);
       console.warn(`📋 Origens permitidas: ${allowedOrigins.join(', ')}`);
-      callback(new Error(`Origem ${origin} não permitida por CORS`), false);
+      return callback(new Error(`Origem ${origin} não permitida por CORS`), false);
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
