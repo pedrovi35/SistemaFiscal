@@ -119,26 +119,61 @@ async function verificarESCorrigirSchema() {
   try {
     console.log('🔍 Verificando schema do banco de dados...');
 
+    // Verificar se a tabela clientes existe
+    const checkTable = await pgPool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public'
+      AND table_name = 'clientes'
+    `);
+
+    if (checkTable.rows.length === 0) {
+      console.log('⚠️ Tabela clientes não encontrada. Criando...');
+      await pgPool.query(`
+        CREATE TABLE clientes (
+          id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+          nome VARCHAR(255) NOT NULL,
+          cnpj VARCHAR(18) UNIQUE,
+          email VARCHAR(255),
+          telefone VARCHAR(20),
+          ativo BOOLEAN DEFAULT TRUE,
+          "regimeTributario" VARCHAR(50),
+          "criadoEm" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          "atualizadoEm" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      console.log('✅ Tabela clientes criada com sucesso');
+    }
+
     // Verificar se a coluna regimeTributario existe na tabela clientes
+    // Usar comparação case-insensitive para garantir que encontre a coluna
     const checkColumn = await pgPool.query(`
       SELECT column_name 
       FROM information_schema.columns 
       WHERE table_schema = 'public'
       AND table_name = 'clientes' 
-      AND column_name = 'regimeTributario'
+      AND LOWER(column_name) = LOWER('regimeTributario')
     `);
 
     if (checkColumn.rows.length === 0) {
       console.log('⚠️ Coluna regimeTributario não encontrada. Criando...');
       
-      await pgPool.query(`
-        ALTER TABLE clientes 
-        ADD COLUMN IF NOT EXISTS "regimeTributario" VARCHAR(50)
-      `);
-      
-      console.log('✅ Coluna regimeTributario criada com sucesso');
+      try {
+        await pgPool.query(`
+          ALTER TABLE clientes 
+          ADD COLUMN "regimeTributario" VARCHAR(50)
+        `);
+        console.log('✅ Coluna regimeTributario criada com sucesso');
+      } catch (alterError: any) {
+        // Se a coluna já existe (erro de duplicação), apenas logar
+        if (alterError.code === '42701' || alterError.message?.includes('already exists')) {
+          console.log('ℹ️ Coluna regimeTributario já existe (detectada durante criação)');
+        } else {
+          throw alterError;
+        }
+      }
     } else {
-      console.log('✅ Coluna regimeTributario já existe');
+      console.log(`✅ Coluna regimeTributario já existe (nome: ${checkColumn.rows[0].column_name})`);
     }
 
     // Verificar outras colunas importantes
@@ -147,16 +182,24 @@ async function verificarESCorrigirSchema() {
       FROM information_schema.columns 
       WHERE table_schema = 'public'
       AND table_name = 'clientes' 
-      AND column_name = 'criadoEm'
+      AND LOWER(column_name) = LOWER('criadoEm')
     `);
 
     if (checkCriadoEm.rows.length === 0) {
       console.log('⚠️ Coluna criadoEm não encontrada. Criando...');
-      await pgPool.query(`
-        ALTER TABLE clientes 
-        ADD COLUMN IF NOT EXISTS "criadoEm" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      `);
-      console.log('✅ Coluna criadoEm criada com sucesso');
+      try {
+        await pgPool.query(`
+          ALTER TABLE clientes 
+          ADD COLUMN "criadoEm" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        `);
+        console.log('✅ Coluna criadoEm criada com sucesso');
+      } catch (alterError: any) {
+        if (alterError.code === '42701' || alterError.message?.includes('already exists')) {
+          console.log('ℹ️ Coluna criadoEm já existe (detectada durante criação)');
+        } else {
+          throw alterError;
+        }
+      }
     }
 
     const checkAtualizadoEm = await pgPool.query(`
@@ -164,16 +207,24 @@ async function verificarESCorrigirSchema() {
       FROM information_schema.columns 
       WHERE table_schema = 'public'
       AND table_name = 'clientes' 
-      AND column_name = 'atualizadoEm'
+      AND LOWER(column_name) = LOWER('atualizadoEm')
     `);
 
     if (checkAtualizadoEm.rows.length === 0) {
       console.log('⚠️ Coluna atualizadoEm não encontrada. Criando...');
-      await pgPool.query(`
-        ALTER TABLE clientes 
-        ADD COLUMN IF NOT EXISTS "atualizadoEm" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      `);
-      console.log('✅ Coluna atualizadoEm criada com sucesso');
+      try {
+        await pgPool.query(`
+          ALTER TABLE clientes 
+          ADD COLUMN "atualizadoEm" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        `);
+        console.log('✅ Coluna atualizadoEm criada com sucesso');
+      } catch (alterError: any) {
+        if (alterError.code === '42701' || alterError.message?.includes('already exists')) {
+          console.log('ℹ️ Coluna atualizadoEm já existe (detectada durante criação)');
+        } else {
+          throw alterError;
+        }
+      }
     }
 
     console.log('✅ Verificação de schema concluída');
