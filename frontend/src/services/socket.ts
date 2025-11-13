@@ -12,6 +12,14 @@ class SocketService {
       return;
     }
 
+    // Verificar se a URL está configurada
+    if (!SOCKET_URL || SOCKET_URL === 'http://localhost:3001') {
+      console.warn('⚠️ SOCKET_URL não configurada ou usando padrão localhost');
+      console.warn('📋 Configure VITE_SOCKET_URL no Vercel ou no arquivo .env');
+    }
+    
+    console.log(`🔗 Tentando conectar ao Socket.IO: ${SOCKET_URL}`);
+    
     this.socket = io(SOCKET_URL, {
       // Força usar apenas polling para máxima compatibilidade com Vercel/Render
       transports: ['polling'],
@@ -25,7 +33,12 @@ class SocketService {
       // Configurações adicionais para melhor estabilidade
       upgrade: false,                 // Não tentar upgrade para WebSocket
       rememberUpgrade: false,
-      rejectUnauthorized: false       // Aceitar certificados auto-assinados em dev
+      rejectUnauthorized: false,      // Aceitar certificados auto-assinados em dev
+      // Configurações para melhor tratamento de erros
+      withCredentials: true,         // Enviar credenciais (necessário para CORS com credentials)
+      // Retry logic melhorado
+      reconnectionDelayFactor: 1.5,  // Aumentar delay exponencialmente
+      randomizationFactor: 0.5       // Adicionar aleatoriedade para evitar thundering herd
     });
 
     this.socket.on('connect', () => {
@@ -39,16 +52,36 @@ class SocketService {
     });
 
     this.socket.on('connect_error', (error) => {
-      console.error('❌ Erro de conexão Socket.IO:', error.message);
+      const errorMessage = error.message || String(error);
+      console.error('❌ Erro de conexão Socket.IO:', errorMessage);
       
-      // Se for erro 502, pode ser cold start do Render
-      if (error.message.includes('502') || error.message.includes('Bad Gateway')) {
-        console.log('⏳ Servidor está iniciando (cold start)... Aguarde até 60s');
-      } else if (error.message.includes('CORS')) {
-        console.error('🚫 Erro de CORS - Verifique as configurações do backend');
+      // Tratamento específico para diferentes tipos de erro
+      if (errorMessage.includes('502') || errorMessage.includes('Bad Gateway')) {
+        console.log('⏳ Servidor está iniciando (cold start do Render)...');
+        console.log('⏳ Aguarde até 60 segundos para o servidor ficar online');
+        console.log('💡 Dica: Configure um ping automático em https://uptimerobot.com para manter o servidor ativo');
+      } else if (errorMessage.includes('CORS') || errorMessage.includes('Access-Control-Allow-Origin')) {
+        console.error('🚫 Erro de CORS detectado');
+        console.error('📋 Verifique se:');
+        console.error('   1. A URL do backend está correta');
+        console.error('   2. O backend está configurado para aceitar requisições do Vercel');
+        console.error('   3. A variável CORS_ORIGIN está configurada no Render');
+        console.error(`   4. Origem atual: ${window.location.origin}`);
+      } else if (errorMessage.includes('timeout') || errorMessage.includes('ETIMEDOUT')) {
+        console.error('⏱️ Timeout na conexão');
+        console.log('🔄 Aumentando tempo de espera...');
+      } else if (errorMessage.includes('Network Error') || errorMessage.includes('Failed to fetch')) {
+        console.error('🌐 Erro de rede');
+        console.log('💡 Verifique sua conexão com a internet');
+      } else {
+        console.error('📋 Detalhes do erro:', {
+          message: errorMessage,
+          type: error.type,
+          description: error.description
+        });
       }
       
-      console.log('🔄 Tentando reconectar...');
+      console.log('🔄 Tentando reconectar automaticamente...');
     });
 
     this.socket.on('reconnect', (attemptNumber) => {

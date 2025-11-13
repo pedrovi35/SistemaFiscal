@@ -24,24 +24,36 @@ const allowedOrigins: string[] = [
   process.env.CORS_ORIGIN
 ].filter((origin): origin is string => Boolean(origin));
 
+// Log das origens permitidas
+console.log('🌐 Origens CORS permitidas:', allowedOrigins);
+
 // Configuração especial para Render.com (evita problemas de cold start)
 const io = new SocketIOServer(httpServer, {
   cors: {
     origin: (origin, callback) => {
       // Permitir requisições sem origin (apps mobile, Postman, etc)
-      if (!origin) return callback(null, true);
+      if (!origin) {
+        console.log('✅ Socket.IO - Requisição sem origin permitida');
+        return callback(null, true);
+      }
+      
+      // Log para debug
+      console.log(`🔍 Socket.IO - Verificando origem: ${origin}`);
       
       // Verificar se a origem está na lista permitida
       if (allowedOrigins.indexOf(origin) !== -1) {
+        console.log(`✅ Socket.IO - Origem permitida: ${origin}`);
         callback(null, true);
       } else {
         console.warn(`⚠️ Socket.IO - Origem bloqueada por CORS: ${origin}`);
-        callback(null, false);
+        console.warn(`📋 Origens permitidas: ${allowedOrigins.join(', ')}`);
+        callback(new Error(`Origem ${origin} não permitida por CORS`), false);
       }
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    exposedHeaders: ['Content-Type', 'Authorization']
   },
   transports: ['polling', 'websocket'],
   allowEIO3: true,
@@ -51,32 +63,71 @@ const io = new SocketIOServer(httpServer, {
   upgradeTimeout: 30000,   // 30s para upgrade de transporte
   maxHttpBufferSize: 1e6,  // 1MB de buffer
   allowUpgrades: true,     // Permitir upgrade de polling para websocket
-  perMessageDeflate: false // Desabilitar compressão para melhor performance
+  perMessageDeflate: false, // Desabilitar compressão para melhor performance
+  // Configurações adicionais para evitar problemas de CORS
+  connectTimeout: 60000,   // 60s para timeout de conexão
+  serveClient: false       // Não servir o cliente Socket.IO
 });
 
 const PORT = process.env.PORT || 3001;
 
+// Middleware de CORS manual para garantir headers em todas as respostas
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const origin = req.headers.origin;
+  
+  // Se a origem está permitida, adicionar headers CORS
+  if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+    if (origin) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    } else {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+    }
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Type, Authorization, Content-Range, X-Content-Range');
+    
+    // Para requisições OPTIONS (preflight), responder imediatamente
+    if (req.method === 'OPTIONS') {
+      return res.status(200).end();
+    }
+  }
+  
+  next();
+});
+
 // Middlewares
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  // Desabilitar alguns recursos do Helmet que podem interferir com Socket.IO
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false
 }));
 app.use(compression());
 app.use(cors({
   origin: (origin, callback) => {
     // Permitir requisições sem origin (mobile apps, Postman, etc)
-    if (!origin) return callback(null, true);
+    if (!origin) {
+      console.log('✅ CORS - Requisição sem origin permitida');
+      return callback(null, true);
+    }
+    
+    // Log para debug
+    console.log(`🔍 CORS - Verificando origem: ${origin}`);
     
     if (allowedOrigins.indexOf(origin) !== -1) {
+      console.log(`✅ CORS - Origem permitida: ${origin}`);
       callback(null, true);
     } else {
-      console.warn(`⚠️ Origem bloqueada por CORS: ${origin}`);
-      callback(null, false);
+      console.warn(`⚠️ CORS - Origem bloqueada: ${origin}`);
+      console.warn(`📋 Origens permitidas: ${allowedOrigins.join(', ')}`);
+      callback(new Error(`Origem ${origin} não permitida por CORS`), false);
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  exposedHeaders: ['Content-Range', 'X-Content-Range']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range', 'Content-Type', 'Authorization']
 }));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -115,9 +166,16 @@ app.get('/health', (_req: Request, res: Response) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    service: 'Sistema Fiscal API'
+    service: 'Sistema Fiscal API',
+    socket: {
+      connected: io.engine.clientsCount,
+      ready: true
+    }
   });
 });
+
+// Nota: Socket.IO gerencia suas próprias rotas em /socket.io/*
+// Não é necessário criar rotas manuais para Socket.IO
 
 // Rota 404
 app.use((_req: Request, res: Response) => {
@@ -136,8 +194,21 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 // WebSocket - Gerenciar conexões
 const usuariosConectados = new Map<string, { id: string; nome?: string }>();
 
+// Tratamento de erros do Socket.IO
+io.engine.on('connection_error', (err) => {
+  console.error('❌ Erro de conexão Socket.IO:', err);
+  console.error('📋 Detalhes:', {
+    req: err.req?.headers,
+    code: err.code,
+    message: err.message,
+    context: err.context
+  });
+});
+
 io.on('connection', (socket) => {
-  console.log(`Cliente conectado: ${socket.id}`);
+  console.log(`✅ Cliente conectado: ${socket.id}`);
+  console.log(`📋 Transport: ${socket.conn.transport.name}`);
+  console.log(`🌐 Origin: ${socket.handshake.headers.origin || 'N/A'}`);
 
   // Adicionar usuário
   usuariosConectados.set(socket.id, { id: socket.id });
