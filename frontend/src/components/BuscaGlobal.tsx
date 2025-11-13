@@ -36,14 +36,20 @@ const BuscaGlobal: React.FC<BuscaGlobalProps> = ({ obrigacoes, onSelect }) => {
       return;
     }
 
-    const termo = busca.toLowerCase();
-    const filtrados = obrigacoes.filter(o => 
-      (o.titulo || '').toLowerCase().includes(termo) ||
-      (o.descricao || '').toLowerCase().includes(termo) ||
-      (o.cliente || '').toLowerCase().includes(termo) ||
-      (o.empresa || '').toLowerCase().includes(termo) ||
-      (o.responsavel || '').toLowerCase().includes(termo)
-    );
+    const termo = (busca || '').toLowerCase();
+    const filtrados = obrigacoes.filter(o => {
+      const titulo = (o.titulo || '').toLowerCase();
+      const descricao = (o.descricao || '').toLowerCase();
+      const cliente = (o.cliente || '').toLowerCase();
+      const empresa = (o.empresa || '').toLowerCase();
+      const responsavel = (o.responsavel || '').toLowerCase();
+      
+      return titulo.includes(termo) ||
+             descricao.includes(termo) ||
+             cliente.includes(termo) ||
+             empresa.includes(termo) ||
+             responsavel.includes(termo);
+    });
 
     setResultados(filtrados.slice(0, 8)); // Limitar a 8 resultados
     setIndiceAtivo(0);

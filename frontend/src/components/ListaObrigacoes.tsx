@@ -51,7 +51,13 @@ const ListaObrigacoes: React.FC<ListaObrigacoesProps> = ({ obrigacoes, onCriar, 
 			const statusAlvo = map[aba];
 			if (statusAlvo) lista = lista.filter(o => o.status === statusAlvo);
 		}
-		if (clienteFiltro) lista = lista.filter(o => (o.cliente || '').toLowerCase().includes(clienteFiltro.toLowerCase()));
+		if (clienteFiltro) {
+			const filtroLower = (clienteFiltro || '').toLowerCase();
+			lista = lista.filter(o => {
+				const clienteNome = (o.cliente || '').toLowerCase();
+				return clienteNome.includes(filtroLower);
+			});
+		}
 		if (busca) {
 			const q = busca.toLowerCase();
 			lista = lista.filter(o =>

@@ -16,21 +16,35 @@ export class ObrigacaoModel {
       const valores: any[] = [];
 
       // Campos obrigatórios que sempre devem existir
-      campos.push('titulo', 'descricao', 'data_vencimento', 'tipo', 'status', 'cliente_id', 'empresa', 'responsavel', 'ajuste_data_util', 'created_at', 'updated_at');
-      placeholders.push('?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?');
+      // Verificar se existe cliente_id ou cliente (nome)
+      const temClienteId = colunasExistentes.includes('cliente_id');
+      const temCliente = colunasExistentes.includes('cliente');
+      
+      campos.push('titulo', 'descricao', 'data_vencimento', 'tipo', 'status', 'empresa', 'responsavel', 'ajuste_data_util', 'created_at', 'updated_at');
+      placeholders.push('?', '?', '?', '?', '?', '?', '?', '?', '?', '?');
       valores.push(
         obrigacao.titulo,
         obrigacao.descricao || null,
         obrigacao.dataVencimento,
         obrigacao.tipo,
         obrigacao.status,
-        null, // cliente_id
         obrigacao.empresa || null,
         obrigacao.responsavel || null,
         obrigacao.ajusteDataUtil ? true : false,
         agora,
         agora
       );
+      
+      // Adicionar cliente (nome) ou cliente_id conforme disponível
+      if (temCliente) {
+        campos.push('cliente');
+        placeholders.push('?');
+        valores.push(obrigacao.cliente || null);
+      } else if (temClienteId) {
+        campos.push('cliente_id');
+        placeholders.push('?');
+        valores.push(null); // cliente_id será null se não houver conversão de nome para ID
+      }
 
       // Campos opcionais que podem não existir
       if (colunasExistentes.includes('data_vencimento_original')) {
@@ -322,7 +336,7 @@ export class ObrigacaoModel {
         console.warn('⚠️ Nenhuma coluna encontrada, usando lista padrão');
         return [
           'id', 'titulo', 'descricao', 'data_vencimento', 
-          'tipo', 'status', 'cliente_id', 'empresa', 'responsavel',
+          'tipo', 'status', 'cliente', 'cliente_id', 'empresa', 'responsavel',
           'ajuste_data_util', 'created_at', 'updated_at',
           'data_vencimento_original', 'preferencia_ajuste', 'cor'
         ];
@@ -335,7 +349,7 @@ export class ObrigacaoModel {
       // Lista padrão de colunas que sempre devem existir
       return [
         'id', 'titulo', 'descricao', 'data_vencimento', 
-        'tipo', 'status', 'cliente_id', 'empresa', 'responsavel',
+        'tipo', 'status', 'cliente', 'cliente_id', 'empresa', 'responsavel',
         'ajuste_data_util', 'created_at', 'updated_at',
         'data_vencimento_original', 'preferencia_ajuste', 'cor'
       ];
@@ -638,6 +652,7 @@ export class ObrigacaoModel {
       }
       
       // Mapear com valores padrão seguros
+      // Lidar com campos que podem estar em snake_case ou camelCase (com ou sem aspas)
       return {
         id: String(row.id || ''),
         titulo: String(row.titulo || ''),
@@ -646,7 +661,7 @@ export class ObrigacaoModel {
         dataVencimentoOriginal: row.data_vencimento_original || row.dataVencimentoOriginal || row.data_vencimento || new Date().toISOString().split('T')[0],
         tipo: (row.tipo || 'OUTRO') as TipoObrigacao,
         status: (row.status || 'PENDENTE') as StatusObrigacao,
-        cliente: row.cliente ? String(row.cliente) : undefined,
+        cliente: (row.cliente || row['cliente']) ? String(row.cliente || row['cliente'] || '') : undefined,
         empresa: row.empresa ? String(row.empresa) : undefined,
         responsavel: row.responsavel ? String(row.responsavel) : undefined,
         recorrencia: recorrencia,
