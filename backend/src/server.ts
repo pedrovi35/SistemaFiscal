@@ -28,10 +28,12 @@ const allowedOrigins: string[] = [
 console.log('🌐 Origens CORS permitidas:', allowedOrigins);
 
 // Configuração especial para Render.com (evita problemas de cold start)
+// IMPORTANTE: Em produção, SEMPRE permitir qualquer origem para evitar problemas de CORS com 502
 const io = new SocketIOServer(httpServer, {
   cors: {
     origin: (origin, callback) => {
-      // SEMPRE permitir em produção para evitar problemas de CORS com 502
+      // CRÍTICO: SEMPRE permitir em produção para evitar problemas de CORS com 502 Bad Gateway
+      // Quando o servidor está com cold start ou erro, o navegador precisa receber headers CORS
       if (process.env.NODE_ENV === 'production') {
         console.log(`✅ Socket.IO - Permitindo origem em produção: ${origin || 'sem origin'}`);
         return callback(null, true);
@@ -73,46 +75,64 @@ const io = new SocketIOServer(httpServer, {
   transports: ['polling', 'websocket'],
   allowEIO3: true,
   // Configurações para melhor compatibilidade com Render
-  pingTimeout: 60000,      // 60s antes de considerar desconectado
-  pingInterval: 25000,     // Envia ping a cada 25s
-  upgradeTimeout: 30000,   // 30s para upgrade de transporte
-  maxHttpBufferSize: 1e6,  // 1MB de buffer
-  allowUpgrades: true,     // Permitir upgrade de polling para websocket
+  pingTimeout: 120000,     // 120s antes de considerar desconectado (aumentado para cold start)
+  pingInterval: 25000,    // Envia ping a cada 25s
+  upgradeTimeout: 60000,  // 60s para upgrade de transporte (aumentado)
+  maxHttpBufferSize: 1e6, // 1MB de buffer
+  allowUpgrades: true,    // Permitir upgrade de polling para websocket
   perMessageDeflate: false, // Desabilitar compressão para melhor performance
-  // Configurações adicionais para evitar problemas de CORS
-  connectTimeout: 60000,   // 60s para timeout de conexão
-  serveClient: false       // Não servir o cliente Socket.IO
+  // Configurações adicionais para evitar problemas de CORS e cold start
+  connectTimeout: 120000,  // 120s para timeout de conexão (aumentado para cold start)
+  serveClient: false,      // Não servir o cliente Socket.IO
+  // Configurações críticas para Render
+  cookie: {
+    name: 'io',
+    httpOnly: false,
+    sameSite: 'lax',
+    path: '/'
+  }
 });
 
 const PORT = process.env.PORT || 3001;
 
-// Middleware especial para Socket.IO - garantir CORS antes de qualquer processamento
+// Middleware especial para Socket.IO - garantir CORS ANTES de qualquer processamento
+// CRÍTICO: Este middleware deve ser executado ANTES do Socket.IO processar a requisição
 app.use('/socket.io', (req: Request, res: Response, next: NextFunction): void => {
   const origin = req.headers.origin;
   
   // SEMPRE adicionar headers CORS para Socket.IO (crítico para evitar erro de CORS com 502)
-  if (origin) {
-    // Em produção, sempre permitir
-    if (process.env.NODE_ENV === 'production' || 
-        origin.includes('vercel.app') || 
-        origin.includes('localhost') ||
+  // Em produção, SEMPRE permitir qualquer origem do Vercel
+  if (process.env.NODE_ENV === 'production') {
+    // Em produção, sempre permitir a origem da requisição
+    if (origin) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    } else {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+    }
+  } else if (origin) {
+    // Em desenvolvimento, verificar se está na lista ou é conhecida
+    if (origin.includes('vercel.app') || 
+        origin.includes('localhost') || 
+        origin.includes('127.0.0.1') ||
         allowedOrigins.indexOf(origin) !== -1) {
       res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
-      res.setHeader('Access-Control-Expose-Headers', 'Content-Type, Authorization');
-      res.setHeader('Access-Control-Max-Age', '86400');
+    } else {
+      // Mesmo em desenvolvimento, permitir para evitar erro de CORS
+      res.setHeader('Access-Control-Allow-Origin', origin);
     }
   } else {
     // Sem origin, permitir qualquer origem
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-    res.setHeader('Access-Control-Max-Age', '86400');
   }
   
-  // Para requisições OPTIONS (preflight), responder imediatamente
+  // Sempre adicionar todos os headers CORS necessários
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Max-Age', '86400');
+  
+  // Para requisições OPTIONS (preflight), responder imediatamente com 200
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
@@ -301,6 +321,33 @@ app.get('/health', (req: Request, res: Response) => {
   }
 });
 
+// Rota de health check específica para Socket.IO
+// Útil para verificar se o Socket.IO está funcionando antes de tentar conectar
+app.get('/socket.io/health', (req: Request, res: Response) => {
+  const origin = req.headers.origin;
+  
+  // SEMPRE adicionar headers CORS
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+  } else if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  
+  res.json({
+    status: 'ok',
+    service: 'Socket.IO',
+    timestamp: new Date().toISOString(),
+    connected: io.engine.clientsCount,
+    ready: true
+  });
+});
+
 // Nota: Socket.IO gerencia suas próprias rotas em /socket.io/*
 // Não é necessário criar rotas manuais para Socket.IO
 
@@ -370,6 +417,7 @@ app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
 const usuariosConectados = new Map<string, { id: string; nome?: string }>();
 
 // Tratamento de erros do Socket.IO com headers CORS
+// CRÍTICO: Garantir que headers CORS sejam sempre enviados, mesmo em erros
 io.engine.on('connection_error', (err) => {
   console.error('❌ Erro de conexão Socket.IO:', err);
   console.error('📋 Detalhes:', {
@@ -380,21 +428,63 @@ io.engine.on('connection_error', (err) => {
   });
   
   // Garantir que headers CORS sejam adicionados mesmo em erros
-  if (err.req && err.req.headers && err.req.headers.origin) {
-    const origin = err.req.headers.origin as string;
+  if (err.req && err.req.headers) {
+    const origin = err.req.headers.origin as string | undefined;
     const res = err.req.res;
     
     if (res && !res.headersSent) {
-      // Sempre permitir em produção
-      if (process.env.NODE_ENV === 'production' || 
-          origin.includes('vercel.app') || 
-          origin.includes('localhost') ||
-          allowedOrigins.indexOf(origin) !== -1) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-        res.setHeader('Access-Control-Allow-Credentials', 'true');
+      // SEMPRE adicionar headers CORS em produção
+      if (process.env.NODE_ENV === 'production') {
+        if (origin) {
+          res.setHeader('Access-Control-Allow-Origin', origin);
+        } else {
+          res.setHeader('Access-Control-Allow-Origin', '*');
+        }
+      } else if (origin) {
+        // Em desenvolvimento, permitir se for conhecida
+        if (origin.includes('vercel.app') || 
+            origin.includes('localhost') || 
+            origin.includes('127.0.0.1') ||
+            allowedOrigins.indexOf(origin) !== -1) {
+          res.setHeader('Access-Control-Allow-Origin', origin);
+        } else {
+          // Mesmo assim, permitir para evitar erro de CORS
+          res.setHeader('Access-Control-Allow-Origin', origin);
+        }
+      } else {
+        res.setHeader('Access-Control-Allow-Origin', '*');
       }
+      
+      // Sempre adicionar todos os headers CORS
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Expose-Headers', 'Content-Type, Authorization');
+    }
+  }
+});
+
+// Tratamento adicional para erros de upgrade (polling -> websocket)
+io.engine.on('upgrade_error', (err) => {
+  console.error('❌ Erro de upgrade Socket.IO:', err);
+  
+  // Garantir headers CORS mesmo em erro de upgrade
+  if (err.req && err.req.headers) {
+    const origin = err.req.headers.origin as string | undefined;
+    const res = err.req.res;
+    
+    if (res && !res.headersSent) {
+      if (process.env.NODE_ENV === 'production') {
+        res.setHeader('Access-Control-Allow-Origin', origin || '*');
+      } else if (origin) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+      } else {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+      }
+      
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
     }
   }
 });
