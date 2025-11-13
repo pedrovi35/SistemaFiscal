@@ -31,6 +31,12 @@ console.log('🌐 Origens CORS permitidas:', allowedOrigins);
 const io = new SocketIOServer(httpServer, {
   cors: {
     origin: (origin, callback) => {
+      // SEMPRE permitir em produção para evitar problemas de CORS com 502
+      if (process.env.NODE_ENV === 'production') {
+        console.log(`✅ Socket.IO - Permitindo origem em produção: ${origin || 'sem origin'}`);
+        return callback(null, true);
+      }
+      
       // Permitir requisições sem origin (apps mobile, Postman, etc)
       if (!origin) {
         console.log('✅ Socket.IO - Requisição sem origin permitida');
@@ -46,23 +52,15 @@ const io = new SocketIOServer(httpServer, {
         return callback(null, true);
       }
       
-      // Em produção, ser mais permissivo para evitar problemas
-      // Mas ainda logar para debug
-      console.warn(`⚠️ Socket.IO - Origem não está na lista: ${origin}`);
-      console.warn(`📋 Origens permitidas: ${allowedOrigins.join(', ')}`);
-      
-      // Em produção, permitir origens do Vercel e outras origens para evitar bloqueios
-      if (process.env.NODE_ENV === 'production') {
-        if (origin.includes('vercel.app')) {
-          console.log(`✅ Socket.IO - Permitindo origem do Vercel: ${origin}`);
-          return callback(null, true);
-        }
-        // Em produção, ser permissivo para evitar problemas de CORS
-        console.log(`✅ Socket.IO - Permitindo origem em produção: ${origin}`);
+      // Em desenvolvimento, permitir localhost e Vercel mesmo se não estiver na lista
+      if (origin.includes('localhost') || origin.includes('127.0.0.1') || origin.includes('vercel.app')) {
+        console.log(`✅ Socket.IO - Permitindo origem conhecida: ${origin}`);
         return callback(null, true);
       }
       
       // Em desenvolvimento, bloquear origens não permitidas
+      console.warn(`⚠️ Socket.IO - Origem bloqueada: ${origin}`);
+      console.warn(`📋 Origens permitidas: ${allowedOrigins.join(', ')}`);
       return callback(new Error(`Origem ${origin} não permitida por CORS`), false);
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -87,6 +85,41 @@ const io = new SocketIOServer(httpServer, {
 });
 
 const PORT = process.env.PORT || 3001;
+
+// Middleware especial para Socket.IO - garantir CORS antes de qualquer processamento
+app.use('/socket.io', (req: Request, res: Response, next: NextFunction): void => {
+  const origin = req.headers.origin;
+  
+  // SEMPRE adicionar headers CORS para Socket.IO (crítico para evitar erro de CORS com 502)
+  if (origin) {
+    // Em produção, sempre permitir
+    if (process.env.NODE_ENV === 'production' || 
+        origin.includes('vercel.app') || 
+        origin.includes('localhost') ||
+        allowedOrigins.indexOf(origin) !== -1) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Expose-Headers', 'Content-Type, Authorization');
+      res.setHeader('Access-Control-Max-Age', '86400');
+    }
+  } else {
+    // Sem origin, permitir qualquer origem
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.setHeader('Access-Control-Max-Age', '86400');
+  }
+  
+  // Para requisições OPTIONS (preflight), responder imediatamente
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+  
+  next();
+});
 
 // Middleware de CORS manual para garantir headers em TODAS as respostas (incluindo erros)
 // Este middleware deve ser o PRIMEIRO para garantir que headers CORS estejam sempre presentes
@@ -146,11 +179,19 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
   // Desabilitar alguns recursos do Helmet que podem interferir com Socket.IO
   contentSecurityPolicy: false,
-  crossOriginEmbedderPolicy: false
+  crossOriginEmbedderPolicy: false,
+  // Permitir que Socket.IO funcione corretamente
+  crossOriginOpenerPolicy: false
 }));
 app.use(compression());
 app.use(cors({
   origin: (origin, callback) => {
+    // SEMPRE permitir em produção para evitar problemas de CORS
+    if (process.env.NODE_ENV === 'production') {
+      console.log(`✅ CORS - Permitindo origem em produção: ${origin || 'sem origin'}`);
+      return callback(null, true);
+    }
+    
     // Permitir requisições sem origin (mobile apps, Postman, etc)
     if (!origin) {
       console.log('✅ CORS - Requisição sem origin permitida');
@@ -166,22 +207,16 @@ app.use(cors({
       return callback(null, true);
     }
     
-    // Em produção, ser mais permissivo com origens do Vercel
-    if (process.env.NODE_ENV === 'production' && origin.includes('vercel.app')) {
-      console.log(`✅ CORS - Permitindo origem do Vercel em produção: ${origin}`);
+    // Em desenvolvimento, permitir localhost e Vercel mesmo se não estiver na lista
+    if (origin.includes('localhost') || origin.includes('127.0.0.1') || origin.includes('vercel.app')) {
+      console.log(`✅ CORS - Permitindo origem conhecida: ${origin}`);
       return callback(null, true);
     }
     
     // Em desenvolvimento, bloquear origens não permitidas
-    if (process.env.NODE_ENV === 'development') {
-      console.warn(`⚠️ CORS - Origem bloqueada: ${origin}`);
-      console.warn(`📋 Origens permitidas: ${allowedOrigins.join(', ')}`);
-      return callback(new Error(`Origem ${origin} não permitida por CORS`), false);
-    }
-    
-    // Em produção, ser permissivo para evitar problemas
-    console.log(`✅ CORS - Permitindo origem em produção: ${origin}`);
-    return callback(null, true);
+    console.warn(`⚠️ CORS - Origem bloqueada: ${origin}`);
+    console.warn(`📋 Origens permitidas: ${allowedOrigins.join(', ')}`);
+    return callback(new Error(`Origem ${origin} não permitida por CORS`), false);
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   credentials: true,
@@ -334,7 +369,7 @@ app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
 // WebSocket - Gerenciar conexões
 const usuariosConectados = new Map<string, { id: string; nome?: string }>();
 
-// Tratamento de erros do Socket.IO
+// Tratamento de erros do Socket.IO com headers CORS
 io.engine.on('connection_error', (err) => {
   console.error('❌ Erro de conexão Socket.IO:', err);
   console.error('📋 Detalhes:', {
@@ -343,6 +378,25 @@ io.engine.on('connection_error', (err) => {
     message: err.message,
     context: err.context
   });
+  
+  // Garantir que headers CORS sejam adicionados mesmo em erros
+  if (err.req && err.req.headers && err.req.headers.origin) {
+    const origin = err.req.headers.origin as string;
+    const res = err.req.res;
+    
+    if (res && !res.headersSent) {
+      // Sempre permitir em produção
+      if (process.env.NODE_ENV === 'production' || 
+          origin.includes('vercel.app') || 
+          origin.includes('localhost') ||
+          allowedOrigins.indexOf(origin) !== -1) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+      }
+    }
+  }
 });
 
 io.on('connection', (socket) => {
