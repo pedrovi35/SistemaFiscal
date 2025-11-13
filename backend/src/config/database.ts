@@ -84,6 +84,9 @@ export async function initializeDatabase() {
     console.log('ℹ️ Modo PostgreSQL ativo');
     console.log('ℹ️ Certifique-se de que as tabelas foram criadas usando o script database_supabase.sql');
 
+    // Verificar e corrigir schema automaticamente
+    await verificarESCorrigirSchema();
+
   } catch (error: any) {
     console.error('❌ Erro ao inicializar banco de dados:', error.message);
     console.error('📋 Detalhes do erro:', {
@@ -106,6 +109,78 @@ export async function initializeDatabase() {
     }
     
     throw error;
+  }
+}
+
+// Verificar e corrigir schema do banco de dados
+async function verificarESCorrigirSchema() {
+  if (!pgPool) return;
+
+  try {
+    console.log('🔍 Verificando schema do banco de dados...');
+
+    // Verificar se a coluna regimeTributario existe na tabela clientes
+    const checkColumn = await pgPool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_schema = 'public'
+      AND table_name = 'clientes' 
+      AND column_name = 'regimeTributario'
+    `);
+
+    if (checkColumn.rows.length === 0) {
+      console.log('⚠️ Coluna regimeTributario não encontrada. Criando...');
+      
+      await pgPool.query(`
+        ALTER TABLE clientes 
+        ADD COLUMN IF NOT EXISTS "regimeTributario" VARCHAR(50)
+      `);
+      
+      console.log('✅ Coluna regimeTributario criada com sucesso');
+    } else {
+      console.log('✅ Coluna regimeTributario já existe');
+    }
+
+    // Verificar outras colunas importantes
+    const checkCriadoEm = await pgPool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_schema = 'public'
+      AND table_name = 'clientes' 
+      AND column_name = 'criadoEm'
+    `);
+
+    if (checkCriadoEm.rows.length === 0) {
+      console.log('⚠️ Coluna criadoEm não encontrada. Criando...');
+      await pgPool.query(`
+        ALTER TABLE clientes 
+        ADD COLUMN IF NOT EXISTS "criadoEm" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      `);
+      console.log('✅ Coluna criadoEm criada com sucesso');
+    }
+
+    const checkAtualizadoEm = await pgPool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_schema = 'public'
+      AND table_name = 'clientes' 
+      AND column_name = 'atualizadoEm'
+    `);
+
+    if (checkAtualizadoEm.rows.length === 0) {
+      console.log('⚠️ Coluna atualizadoEm não encontrada. Criando...');
+      await pgPool.query(`
+        ALTER TABLE clientes 
+        ADD COLUMN IF NOT EXISTS "atualizadoEm" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      `);
+      console.log('✅ Coluna atualizadoEm criada com sucesso');
+    }
+
+    console.log('✅ Verificação de schema concluída');
+  } catch (error: any) {
+    console.error('⚠️ Erro ao verificar/corrigir schema:', error.message);
+    console.error('💡 Execute o script fix_regime_tributario.sql manualmente no Supabase');
+    // Não lançar erro - permitir que o servidor inicie mesmo se a verificação falhar
   }
 }
 
