@@ -174,6 +174,9 @@ export class ObrigacaoModel {
   // Atualizar
   async atualizar(id: string, dados: Partial<Obrigacao>): Promise<Obrigacao | undefined> {
     try {
+      console.log('🔍 Iniciando atualização da obrigação:', id);
+      console.log('📋 Dados recebidos:', JSON.stringify(dados, null, 2));
+      
       const campos: string[] = [];
       const valores: any[] = [];
 
@@ -191,10 +194,16 @@ export class ObrigacaoModel {
       };
 
       // Verificar quais colunas existem no banco antes de tentar atualizar
+      console.log('🔍 Verificando colunas existentes no banco...');
       const colunasExistentes = await this.verificarColunasExistentes();
 
+      // Separar campos de recorrência dos campos da obrigação
+      const recorrencia = dados.recorrencia;
+      const dadosSemRecorrencia = { ...dados };
+      delete (dadosSemRecorrencia as any).recorrencia;
+
       for (const campo of camposPermitidos) {
-        if (campo in dados) {
+        if (campo in dadosSemRecorrencia) {
           const nomeCampo = mapeamentoCampos[campo] || campo;
           
           // Pular campos que não existem no banco
@@ -204,12 +213,25 @@ export class ObrigacaoModel {
           }
 
           campos.push(`${nomeCampo} = ?`);
-          const valor = (dados as any)[campo];
-          valores.push(campo === 'ajusteDataUtil' ? (valor ? 1 : 0) : valor);
+          const valor = (dadosSemRecorrencia as any)[campo];
+          
+          // Converter boolean para integer se necessário
+          if (campo === 'ajusteDataUtil') {
+            valores.push(valor === true || valor === 1 ? 1 : 0);
+          } else {
+            valores.push(valor);
+          }
         }
       }
 
-      if (campos.length === 0) return this.buscarPorId(id);
+      if (campos.length === 0) {
+        console.warn('⚠️ Nenhum campo para atualizar (exceto recorrência), buscando obrigação atual...');
+        // Se não há campos para atualizar, mas pode haver recorrência
+        if (recorrencia) {
+          await this.atualizarRecorrencia(id, recorrencia);
+        }
+        return this.buscarPorId(id);
+      }
 
       campos.push('updated_at = ?');
       valores.push(new Date().toISOString());
@@ -219,21 +241,40 @@ export class ObrigacaoModel {
       console.log('🔍 Query de atualização:', query);
       console.log('📋 Valores:', valores);
       
-      await db.run(query, valores);
-
-      // Atualizar recorrência se existir
-      if (dados.recorrencia) {
-        await this.atualizarRecorrencia(id, dados.recorrencia);
+      try {
+        await db.run(query, valores);
+        console.log('✅ Obrigação atualizada com sucesso no banco');
+      } catch (dbError: any) {
+        console.error('❌ Erro ao executar UPDATE:', dbError);
+        console.error('📋 Mensagem:', dbError.message);
+        console.error('📋 Código:', dbError.code);
+        throw dbError;
       }
 
-      return this.buscarPorId(id);
+      // Atualizar recorrência se existir (não propaga erro se falhar)
+      if (recorrencia) {
+        console.log('🔄 Atualizando recorrência...');
+        await this.atualizarRecorrencia(id, recorrencia);
+      }
+
+      // Buscar e retornar obrigação atualizada
+      const obrigacaoAtualizada = await this.buscarPorId(id);
+      
+      if (!obrigacaoAtualizada) {
+        console.error('❌ Obrigação não encontrada após atualização');
+        throw new Error('Obrigação não encontrada após atualização');
+      }
+      
+      console.log('✅ Atualização concluída com sucesso');
+      return obrigacaoAtualizada;
     } catch (error: any) {
       console.error('❌ Erro ao atualizar obrigação:', error);
       console.error('📋 Detalhes:', {
         id,
-        dados,
+        dados: JSON.stringify(dados, null, 2),
         message: error.message,
-        code: error.code
+        code: error.code,
+        stack: error.stack
       });
       throw error;
     }
@@ -242,22 +283,38 @@ export class ObrigacaoModel {
   // Verificar quais colunas existem na tabela obrigacoes
   private async verificarColunasExistentes(): Promise<string[]> {
     try {
+      // PostgreSQL usa information_schema em vez de PRAGMA
       const result = await db.all(`
         SELECT column_name 
         FROM information_schema.columns 
-        WHERE table_name = 'obrigacoes'
+        WHERE table_name = 'obrigacoes' 
+        AND table_schema = 'public'
+        ORDER BY ordinal_position
       `, []);
       
-      const colunas = result.map((row: any) => row.column_name);
+      const colunas = result.map((row: any) => row.column_name || row.column_name);
       console.log('📊 Colunas existentes na tabela obrigacoes:', colunas);
+      
+      if (colunas.length === 0) {
+        console.warn('⚠️ Nenhuma coluna encontrada, usando lista padrão');
+        return [
+          'id', 'titulo', 'descricao', 'data_vencimento', 
+          'tipo', 'status', 'cliente_id', 'empresa', 'responsavel',
+          'ajuste_data_util', 'created_at', 'updated_at',
+          'data_vencimento_original', 'preferencia_ajuste', 'cor'
+        ];
+      }
+      
       return colunas;
-    } catch (error) {
-      console.error('⚠️ Erro ao verificar colunas, usando lista padrão:', error);
+    } catch (error: any) {
+      console.error('⚠️ Erro ao verificar colunas, usando lista padrão:', error.message);
+      console.error('📋 Stack:', error.stack);
       // Lista padrão de colunas que sempre devem existir
       return [
         'id', 'titulo', 'descricao', 'data_vencimento', 
         'tipo', 'status', 'cliente_id', 'empresa', 'responsavel',
-        'ajuste_data_util', 'created_at', 'updated_at'
+        'ajuste_data_util', 'created_at', 'updated_at',
+        'data_vencimento_original', 'preferencia_ajuste', 'cor'
       ];
     }
   }
@@ -327,83 +384,178 @@ export class ObrigacaoModel {
   // Verificar colunas da tabela recorrencias
   private async verificarColunasRecorrencia(): Promise<string[]> {
     try {
+      // PostgreSQL usa information_schema em vez de PRAGMA
       const result = await db.all(`
         SELECT column_name 
         FROM information_schema.columns 
-        WHERE table_name = 'recorrencias'
+        WHERE table_name = 'recorrencias' 
+        AND table_schema = 'public'
+        ORDER BY ordinal_position
       `, []);
       
-      return result.map((row: any) => row.column_name);
-    } catch (error) {
+      const colunas = result.map((row: any) => row.column_name || row.column_name);
+      
+      if (colunas.length === 0) {
+        console.warn('⚠️ Tabela recorrencias não encontrada ou vazia, usando lista padrão');
+        return ['id', 'obrigacao_id', 'tipo', 'intervalo', 'dia_do_mes', 'criada_em', 'ativo', 'dia_geracao', 'data_fim', 'ultima_geracao'];
+      }
+      
+      return colunas;
+    } catch (error: any) {
+      console.error('⚠️ Erro ao verificar colunas de recorrencias, usando lista padrão:', error.message);
       // Lista padrão se não conseguir consultar
-      return ['id', 'obrigacao_id', 'tipo', 'intervalo', 'dia_do_mes', 'criada_em'];
+      return ['id', 'obrigacao_id', 'tipo', 'intervalo', 'dia_do_mes', 'criada_em', 'ativo', 'dia_geracao', 'data_fim', 'ultima_geracao'];
     }
   }
 
   // Atualizar recorrência
   private async atualizarRecorrencia(obrigacaoId: string, recorrencia: Recorrencia) {
-    const agora = new Date().toISOString();
-    const colunasRecorrencia = await this.verificarColunasRecorrencia();
-    
-    // Construir campos do INSERT
-    const campos = ['obrigacao_id', 'tipo', 'criada_em'];
-    const placeholders = ['?', '?', '?'];
-    const valores: any[] = [obrigacaoId, recorrencia.tipo, agora];
-    
-    // Construir campos do UPDATE
-    const camposUpdate: string[] = ['tipo = EXCLUDED.tipo'];
-    
-    // Campos opcionais
-    if (colunasRecorrencia.includes('intervalo')) {
-      campos.push('intervalo');
-      placeholders.push('?');
-      valores.push(recorrencia.intervalo || null);
-      camposUpdate.push('intervalo = EXCLUDED.intervalo');
+    try {
+      console.log('🔄 Iniciando atualização de recorrência para obrigação:', obrigacaoId);
+      console.log('📋 Dados de recorrência:', JSON.stringify(recorrencia, null, 2));
+      
+      const agora = new Date().toISOString();
+      const colunasRecorrencia = await this.verificarColunasRecorrencia();
+      
+      // Verificar se a tabela existe e tem colunas
+      if (!colunasRecorrencia || colunasRecorrencia.length === 0) {
+        console.warn('⚠️ Tabela recorrencias não existe ou está vazia. Pulando atualização de recorrência.');
+        return;
+      }
+      
+      // Construir campos do INSERT
+      const campos = ['obrigacao_id', 'tipo', 'criada_em'];
+      const placeholders = ['?', '?', '?'];
+      const valores: any[] = [obrigacaoId, recorrencia.tipo, agora];
+      
+      // Construir campos do UPDATE
+      const camposUpdate: string[] = ['tipo = EXCLUDED.tipo'];
+      
+      // Campos opcionais
+      if (colunasRecorrencia.includes('intervalo')) {
+        campos.push('intervalo');
+        placeholders.push('?');
+        valores.push(recorrencia.intervalo || null);
+        camposUpdate.push('intervalo = EXCLUDED.intervalo');
+      }
+      
+      if (colunasRecorrencia.includes('dia_do_mes')) {
+        campos.push('dia_do_mes');
+        placeholders.push('?');
+        valores.push(recorrencia.diaDoMes || null);
+        camposUpdate.push('dia_do_mes = EXCLUDED.dia_do_mes');
+      }
+      
+      if (colunasRecorrencia.includes('ativo')) {
+        campos.push('ativo');
+        placeholders.push('?');
+        valores.push(recorrencia.ativo !== undefined ? recorrencia.ativo : true);
+        camposUpdate.push('ativo = EXCLUDED.ativo');
+      }
+      
+      if (colunasRecorrencia.includes('dia_geracao')) {
+        campos.push('dia_geracao');
+        placeholders.push('?');
+        valores.push(recorrencia.diaGeracao || 1);
+        camposUpdate.push('dia_geracao = EXCLUDED.dia_geracao');
+      }
+      
+      if (colunasRecorrencia.includes('data_fim')) {
+        campos.push('data_fim');
+        placeholders.push('?');
+        valores.push(recorrencia.dataFim || null);
+        camposUpdate.push('data_fim = EXCLUDED.data_fim');
+      }
+      
+      if (colunasRecorrencia.includes('ultima_geracao')) {
+        campos.push('ultima_geracao');
+        placeholders.push('?');
+        valores.push(recorrencia.ultimaGeracao || null);
+        camposUpdate.push('ultima_geracao = EXCLUDED.ultima_geracao');
+      }
+      
+      // Verificar se existe constraint UNIQUE em obrigacao_id antes de usar ON CONFLICT
+      let temConstraint = false;
+      try {
+        const constraintCheck = await db.all(`
+          SELECT constraint_name 
+          FROM information_schema.table_constraints 
+          WHERE table_name = 'recorrencias' 
+          AND constraint_type = 'UNIQUE'
+          AND table_schema = 'public'
+        `, []);
+        
+        // Verificar se há constraint única envolvendo obrigacao_id
+        if (constraintCheck && constraintCheck.length > 0) {
+          for (const constraint of constraintCheck) {
+            const constraintName = constraint.constraint_name || constraint.constraintName;
+            if (!constraintName) continue;
+            
+            const columnsCheck = await db.all(`
+              SELECT column_name 
+              FROM information_schema.key_column_usage 
+              WHERE constraint_name = ? 
+              AND table_name = 'recorrencias'
+              AND table_schema = 'public'
+            `, [constraintName]);
+            
+            const columns = columnsCheck.map((c: any) => c.column_name || c.columnName);
+            if (columns.includes('obrigacao_id')) {
+              temConstraint = true;
+              console.log('✅ Constraint UNIQUE encontrada em obrigacao_id:', constraintName);
+              break;
+            }
+          }
+        }
+      } catch (constraintError: any) {
+        console.warn('⚠️ Erro ao verificar constraints, tentando UPDATE direto:', constraintError.message);
+      }
+      
+      let query: string;
+      
+      if (temConstraint) {
+        // Usar ON CONFLICT se houver constraint UNIQUE
+        query = `
+          INSERT INTO recorrencias (${campos.join(', ')}) 
+          VALUES (${placeholders.join(', ')})
+          ON CONFLICT (obrigacao_id) DO UPDATE SET
+            ${camposUpdate.join(', ')}
+        `;
+        console.log('✅ Usando ON CONFLICT (constraint UNIQUE encontrada)');
+      } else {
+        // Fallback: deletar e inserir novamente
+        console.warn('⚠️ Constraint UNIQUE não encontrada, usando DELETE + INSERT');
+        
+        // Primeiro, tentar deletar se existir
+        try {
+          await db.run('DELETE FROM recorrencias WHERE obrigacao_id = ?', [obrigacaoId]);
+        } catch (deleteError: any) {
+          console.warn('⚠️ Erro ao deletar recorrência existente (pode não existir):', deleteError.message);
+        }
+        
+        // Inserir nova recorrência
+        query = `
+          INSERT INTO recorrencias (${campos.join(', ')}) 
+          VALUES (${placeholders.join(', ')})
+        `;
+      }
+      
+      console.log('🔍 Query de atualização de recorrência:', query);
+      console.log('📋 Valores:', valores);
+      
+      await db.run(query, valores);
+      
+      console.log('✅ Recorrência atualizada com sucesso');
+    } catch (error: any) {
+      console.error('❌ Erro ao atualizar recorrência:', error);
+      console.error('📋 Mensagem:', error.message);
+      console.error('📋 Stack:', error.stack);
+      console.error('📋 Código:', error.code);
+      
+      // Não propagar o erro para não quebrar a atualização da obrigação
+      // A recorrência é opcional, então se falhar, logamos mas continuamos
+      console.warn('⚠️ Continuando atualização da obrigação sem atualizar recorrência');
     }
-    
-    if (colunasRecorrencia.includes('dia_do_mes')) {
-      campos.push('dia_do_mes');
-      placeholders.push('?');
-      valores.push(recorrencia.diaDoMes || null);
-      camposUpdate.push('dia_do_mes = EXCLUDED.dia_do_mes');
-    }
-    
-    if (colunasRecorrencia.includes('ativo')) {
-      campos.push('ativo');
-      placeholders.push('?');
-      valores.push(recorrencia.ativo !== undefined ? recorrencia.ativo : true);
-      camposUpdate.push('ativo = EXCLUDED.ativo');
-    }
-    
-    if (colunasRecorrencia.includes('dia_geracao')) {
-      campos.push('dia_geracao');
-      placeholders.push('?');
-      valores.push(recorrencia.diaGeracao || 1);
-      camposUpdate.push('dia_geracao = EXCLUDED.dia_geracao');
-    }
-    
-    if (colunasRecorrencia.includes('data_fim')) {
-      campos.push('data_fim');
-      placeholders.push('?');
-      valores.push(recorrencia.dataFim || null);
-      camposUpdate.push('data_fim = EXCLUDED.data_fim');
-    }
-    
-    if (colunasRecorrencia.includes('ultima_geracao')) {
-      campos.push('ultima_geracao');
-      placeholders.push('?');
-      valores.push(recorrencia.ultimaGeracao || null);
-      camposUpdate.push('ultima_geracao = EXCLUDED.ultima_geracao');
-    }
-    
-    const query = `
-      INSERT INTO recorrencias (${campos.join(', ')}) 
-      VALUES (${placeholders.join(', ')})
-      ON CONFLICT (obrigacao_id) DO UPDATE SET
-        ${camposUpdate.join(', ')}
-    `;
-    
-    await db.run(query, valores);
   }
 
   // Buscar recorrência

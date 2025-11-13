@@ -208,12 +208,71 @@ export class ObrigacaoController {
         }
       }
 
+      // Validações preditivas antes de atualizar
+      console.log('🔍 Validando dados antes de atualizar...');
+      
+      // Validar que pelo menos um campo foi enviado para atualizar
+      const camposPermitidos = [
+        'titulo', 'descricao', 'dataVencimento', 'dataVencimentoOriginal',
+        'tipo', 'status', 'cliente', 'empresa', 'responsavel',
+        'ajusteDataUtil', 'preferenciaAjuste', 'cor', 'recorrencia'
+      ];
+      
+      const camposParaAtualizar = Object.keys(dados).filter(key => 
+        camposPermitidos.includes(key) && dados[key] !== undefined
+      );
+      
+      if (camposParaAtualizar.length === 0) {
+        console.warn('⚠️ Nenhum campo válido para atualizar');
+        res.status(400).json({ erro: 'Nenhum campo válido para atualizar' });
+        return;
+      }
+      
+      console.log('✅ Campos a serem atualizados:', camposParaAtualizar);
+
       console.log('💾 Atualizando obrigação no banco de dados...');
-      const obrigacao = await obrigacaoModel.atualizar(id, dados);
+      let obrigacao;
+      
+      try {
+        obrigacao = await obrigacaoModel.atualizar(id, dados);
+      } catch (dbError: any) {
+        console.error('❌ Erro ao atualizar no banco de dados:', dbError);
+        console.error('📋 Mensagem:', dbError.message);
+        console.error('📋 Stack:', dbError.stack);
+        console.error('📋 Código:', dbError.code);
+        
+        // Mensagens de erro mais específicas
+        if (dbError.code === '23505') { // Unique violation
+          res.status(409).json({ 
+            erro: 'Violação de constraint única',
+            detalhes: process.env.NODE_ENV === 'development' ? dbError.message : undefined
+          });
+          return;
+        } else if (dbError.code === '23503') { // Foreign key violation
+          res.status(400).json({ 
+            erro: 'Violação de chave estrangeira',
+            detalhes: process.env.NODE_ENV === 'development' ? dbError.message : undefined
+          });
+          return;
+        } else if (dbError.code === '42P01') { // Table doesn't exist
+          res.status(500).json({ 
+            erro: 'Tabela não encontrada no banco de dados',
+            detalhes: process.env.NODE_ENV === 'development' ? dbError.message : undefined
+          });
+          return;
+        }
+        
+        // Erro genérico
+        res.status(500).json({ 
+          erro: 'Erro ao atualizar obrigação',
+          detalhes: process.env.NODE_ENV === 'development' ? dbError.message : undefined
+        });
+        return;
+      }
 
       if (!obrigacao) {
         console.error('❌ Erro ao atualizar: obrigação não retornada');
-        res.status(500).json({ erro: 'Erro ao atualizar obrigação' });
+        res.status(500).json({ erro: 'Erro ao atualizar obrigação: registro não encontrado após atualização' });
         return;
       }
 
