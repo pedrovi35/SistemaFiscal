@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -6,9 +6,10 @@ import interactionPlugin from '@fullcalendar/interaction';
 import listPlugin from '@fullcalendar/list';
 import { EventInput, EventClickArg, DateSelectArg, EventDropArg, EventContentArg } from '@fullcalendar/core';
 import { Calendar, Clock, FileText } from 'lucide-react';
-import { Obrigacao, CoresObrigacao, StatusObrigacao } from '../types';
+import { Obrigacao, CoresObrigacao, StatusObrigacao, TipoObrigacao } from '../types';
 import { format } from 'date-fns';
 import ObrigacoesDoDia from './ObrigacoesDoDia';
+import { gerarTodosEventosRecorrentes, isEventoVirtual } from '../utils/recorrenciaUtils';
 
 interface CalendarioFiscalProps {
   obrigacoes: Obrigacao[];
@@ -30,6 +31,16 @@ const CalendarioFiscal: React.FC<CalendarioFiscalProps> = ({
   const [modalDiaAberto, setModalDiaAberto] = useState(false);
   const [dataSelecionada, setDataSelecionada] = useState<string>('');
   const [obrigacoesDoDia, setObrigacoesDoDia] = useState<Obrigacao[]>([]);
+  const [mostrarRecorrencias, setMostrarRecorrencias] = useState<boolean>(true);
+
+  // Gerar eventos recorrentes futuros (memoizado para performance)
+  const obrigacoesComRecorrencias = useMemo(() => {
+    if (!mostrarRecorrencias) {
+      return obrigacoes;
+    }
+    // Aumentar para 24 meses para mostrar recorrências futuras por mais tempo
+    return gerarTodosEventosRecorrentes(obrigacoes, 24); // Gerar 24 meses no futuro
+  }, [obrigacoes, mostrarRecorrencias]);
 
   // Função para obter ícone baseado no status
   const getStatusIcon = (status: StatusObrigacao) => {
@@ -64,15 +75,23 @@ const CalendarioFiscal: React.FC<CalendarioFiscalProps> = ({
   // Renderização customizada de eventos (estilo Google Calendar)
   const renderEventContent = (eventInfo: EventContentArg) => {
     const obrigacao = eventInfo.event.extendedProps.obrigacao as Obrigacao;
+    const isVirtual = eventInfo.event.extendedProps.isVirtual as boolean;
     const isListView = view === 'listWeek';
     const isWeekView = view === 'timeGridWeek';
 
     if (isListView) {
       return (
-        <div className="flex items-center gap-3 p-2 w-full">
+        <div className={`flex items-center gap-3 p-2 w-full ${isVirtual ? 'opacity-70' : ''}`}>
           <span className="text-lg">{getStatusIcon(obrigacao.status)}</span>
           <div className="flex-1 min-w-0">
-            <div className="font-semibold text-sm truncate">{obrigacao.titulo}</div>
+            <div className="font-semibold text-sm truncate flex items-center gap-1">
+              {obrigacao.titulo}
+              {isVirtual && (
+                <span className="text-[10px] bg-purple-500/20 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded font-semibold" title="Ocorrência futura agendada - será criada automaticamente pela recorrência">
+                  ⏱️ Agendada
+                </span>
+              )}
+            </div>
             {obrigacao.cliente && (
               <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
                 👤 {obrigacao.cliente}
@@ -87,14 +106,19 @@ const CalendarioFiscal: React.FC<CalendarioFiscalProps> = ({
     }
 
     return (
-      <div className={`fc-event-custom ${getStatusClass(obrigacao.status)} overflow-hidden h-full flex items-center gap-1.5 px-2 py-1`}>
+      <div className={`fc-event-custom ${getStatusClass(obrigacao.status)} ${isVirtual ? 'opacity-60 border-2 border-dashed' : ''} overflow-hidden h-full flex items-center gap-1.5 px-2 py-1`}>
         <span className="text-xs flex-shrink-0">{getStatusIcon(obrigacao.status)}</span>
         <div className="flex-1 min-w-0 flex flex-col justify-center">
           <div className="flex items-center gap-1">
             <div className="font-semibold text-xs truncate leading-tight">{obrigacao.titulo}</div>
-            {obrigacao.recorrencia && obrigacao.recorrencia.ativo !== false && (
-              <span className="text-[10px] bg-green-500/20 text-green-700 dark:text-green-300 px-1 py-0.5 rounded flex-shrink-0" title="Recorrência automática ativa">
-                🔄
+            {isVirtual && (
+              <span className="text-[10px] bg-purple-500/30 text-purple-700 dark:text-purple-200 px-1 py-0.5 rounded flex-shrink-0 font-semibold" title="Ocorrência futura agendada - será criada automaticamente">
+                ⏱️ Agendada
+              </span>
+            )}
+            {obrigacao.recorrencia && obrigacao.recorrencia.ativo !== false && !isVirtual && (
+              <span className="text-[10px] bg-green-500/20 text-green-700 dark:text-green-300 px-1 py-0.5 rounded flex-shrink-0 font-semibold" title="Recorrência automática ativa - gera novas ocorrências automaticamente">
+                🔄 Automática
               </span>
             )}
           </div>
@@ -123,46 +147,81 @@ const CalendarioFiscal: React.FC<CalendarioFiscalProps> = ({
     return data.split('T')[0];
   };
 
-  // Converter obrigações para eventos do FullCalendar
-  const events: EventInput[] = obrigacoes.map(obrigacao => {
-    const cor = obrigacao.cor || CoresObrigacao[obrigacao.tipo];
+  // Converter obrigações para eventos do FullCalendar (incluindo recorrências futuras)
+  const events: EventInput[] = obrigacoesComRecorrencias.map((obrigacao: Obrigacao) => {
+    const cor = obrigacao.cor || CoresObrigacao[obrigacao.tipo as TipoObrigacao] || CoresObrigacao[TipoObrigacao.OUTRO];
+    const isVirtual = isEventoVirtual(obrigacao);
     
     return {
     id: obrigacao.id,
     title: obrigacao.titulo,
     start: formatarDataParaCalendario(obrigacao.dataVencimento), // Sempre formato yyyy-MM-dd
       allDay: true,
-      backgroundColor: cor,
-      borderColor: cor,
+      backgroundColor: isVirtual ? `${cor}99` : cor, // Mais transparente se for virtual
+      borderColor: isVirtual ? cor : cor,
       textColor: '#ffffff',
       classNames: [
         'event-custom',
         `status-${obrigacao.status ? obrigacao.status.toLowerCase() : 'pendente'}`,
-        obrigacao.ajusteDataUtil ? 'event-with-adjustment' : ''
+        obrigacao.ajusteDataUtil ? 'event-with-adjustment' : '',
+        isVirtual ? 'event-recorrencia-futura' : ''
       ],
     extendedProps: {
         obrigacao,
         cliente: obrigacao.cliente,
         tipo: obrigacao.tipo,
-        status: obrigacao.status
+        status: obrigacao.status,
+        isVirtual
     },
-    editable: true
+    editable: !isVirtual // Eventos virtuais não são editáveis
     };
   });
 
   const handleEventClick = (info: EventClickArg) => {
     const obrigacao = info.event.extendedProps.obrigacao as Obrigacao;
-    onEventClick(obrigacao);
+    const isVirtual = info.event.extendedProps.isVirtual as boolean;
+    
+    if (isVirtual) {
+      // Mostrar alerta para eventos virtuais
+      const confirmar = window.confirm(
+        `Esta é uma ocorrência futura da obrigação "${obrigacao.titulo}".\n\n` +
+        `Data de vencimento: ${new Date(obrigacao.dataVencimento).toLocaleDateString('pt-BR')}\n\n` +
+        `Esta obrigação será criada automaticamente pelo sistema.\n\n` +
+        `Deseja visualizar a obrigação original?`
+      );
+      
+      if (confirmar) {
+        // Encontrar a obrigação original
+        const idOriginal = obrigacao.id.split('-recorrencia-')[0];
+        const obrigacaoOriginal = obrigacoes.find(o => o.id === idOriginal);
+        if (obrigacaoOriginal) {
+          onEventClick(obrigacaoOriginal);
+        }
+      }
+    } else {
+      onEventClick(obrigacao);
+    }
   };
 
   const handleDateSelect = (selectInfo: DateSelectArg) => {
     const data = format(selectInfo.start, 'yyyy-MM-dd');
     
-    // Buscar obrigações deste dia
-    const obrigacoesDia = obrigacoes.filter(o => {
-      const dataObrigacao = formatarDataParaCalendario(o.dataVencimento);
-      return dataObrigacao === data;
-    });
+    // Buscar obrigações deste dia (incluindo recorrências futuras se estiver ativo)
+    let obrigacoesDia: Obrigacao[] = [];
+    
+    if (mostrarRecorrencias) {
+      // Incluir recorrências futuras
+      obrigacoesDia = obrigacoesComRecorrencias.filter((o: Obrigacao) => {
+        const dataObrigacao = formatarDataParaCalendario(o.dataVencimento);
+        return dataObrigacao === data;
+      });
+    } else {
+      // Apenas obrigações reais
+      obrigacoesDia = obrigacoes.filter((o: Obrigacao) => {
+        const dataObrigacao = formatarDataParaCalendario(o.dataVencimento);
+        return dataObrigacao === data;
+      });
+    }
     
     // Abrir modal mostrando obrigações do dia
     setDataSelecionada(data);
@@ -252,7 +311,27 @@ const CalendarioFiscal: React.FC<CalendarioFiscalProps> = ({
           </div>
         </div>
         
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap items-center">
+          {/* Toggle de Recorrências */}
+          <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/30 dark:to-blue-900/30 rounded-lg border border-green-200 dark:border-green-800">
+            <input
+              type="checkbox"
+              id="toggle-recorrencias"
+              checked={mostrarRecorrencias}
+              onChange={(e) => setMostrarRecorrencias(e.target.checked)}
+              className="w-4 h-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+            />
+            <label htmlFor="toggle-recorrencias" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer flex items-center gap-2">
+              <span className="text-lg">🔄</span>
+              <span>Recorrências Agendadas (24 meses)</span>
+              {mostrarRecorrencias && (
+                <span className="text-xs bg-green-500/20 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full">
+                  Ativo
+                </span>
+              )}
+            </label>
+          </div>
+          
           <button
             onClick={() => mudarVisao('dayGridMonth')}
             className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
@@ -335,6 +414,18 @@ const CalendarioFiscal: React.FC<CalendarioFiscalProps> = ({
           <span className="text-lg">⚠️</span>
           <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Atrasada</span>
         </div>
+        {mostrarRecorrencias && (
+          <>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-lg border border-purple-200 dark:border-purple-800">
+              <span className="text-lg">⏱️</span>
+              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Recorrência Agendada (24 meses)</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <span className="text-lg">🔄</span>
+              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Recorrência Automática Ativa</span>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Calendário */}

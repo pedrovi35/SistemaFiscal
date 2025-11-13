@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, Edit, Trash2, FileText, BarChart3, Archive } from 'lucide-react';
 import { Obrigacao, StatusObrigacao } from '../types';
+import { isEventoVirtual } from '../utils/recorrenciaUtils';
 
 interface ObrigacoesDoDiaProps {
   data: string;
@@ -137,6 +138,14 @@ const ObrigacoesDoDia: React.FC<ObrigacoesDoDiaProps> = ({
                                   🔄 Recorrente
                                 </span>
                               )}
+                              {isEventoVirtual(obrigacao) && (
+                                <span 
+                                  className="text-xs bg-purple-500/20 text-purple-700 dark:text-purple-300 px-2 py-1 rounded-full flex items-center gap-1 font-semibold"
+                                  title="Ocorrência futura agendada - será criada automaticamente"
+                                >
+                                  ⏱️ Agendada
+                                </span>
+                              )}
                             </div>
                             
                             {obrigacao.descricao && (
@@ -180,40 +189,71 @@ const ObrigacoesDoDia: React.FC<ObrigacoesDoDiaProps> = ({
 
                             {/* Informações de Recorrência */}
                             {obrigacao.recorrencia && (
-                              <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
-                                <p className="text-xs text-blue-700 dark:text-blue-300 font-medium mb-1">
-                                  🔄 Recorrência Configurada:
+                              <div className={`mt-2 p-2 rounded border ${
+                                isEventoVirtual(obrigacao) 
+                                  ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800' 
+                                  : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                              }`}>
+                                <p className={`text-xs font-medium mb-1 ${
+                                  isEventoVirtual(obrigacao)
+                                    ? 'text-purple-700 dark:text-purple-300'
+                                    : 'text-blue-700 dark:text-blue-300'
+                                }`}>
+                                  {isEventoVirtual(obrigacao) ? '⏱️ Ocorrência Agendada:' : '🔄 Recorrência Configurada:'}
                                 </p>
-                                <div className="text-xs text-blue-600 dark:text-blue-400 space-y-0.5">
+                                <div className={`text-xs space-y-0.5 ${
+                                  isEventoVirtual(obrigacao)
+                                    ? 'text-purple-600 dark:text-purple-400'
+                                    : 'text-blue-600 dark:text-blue-400'
+                                }`}>
                                   <p>• Periodicidade: <strong>{obrigacao.recorrencia.tipo}</strong></p>
                                   {obrigacao.recorrencia.diaGeracao && (
                                     <p>• Geração automática: <strong>Dia {obrigacao.recorrencia.diaGeracao} de cada mês</strong></p>
                                   )}
+                                  {obrigacao.recorrencia.diaDoMes && (
+                                    <p>• Dia fixo de vencimento: <strong>Dia {obrigacao.recorrencia.diaDoMes}</strong></p>
+                                  )}
                                   <p>• Status: <strong>{obrigacao.recorrencia.ativo !== false ? '✅ Ativa' : '⏸️ Pausada'}</strong></p>
+                                  {isEventoVirtual(obrigacao) && (
+                                    <p className="text-purple-700 dark:text-purple-300 font-semibold mt-1">
+                                      ✨ Esta ocorrência será criada automaticamente pelo sistema
+                                    </p>
+                                  )}
                                 </div>
                               </div>
                             )}
                           </div>
 
                           <div className="flex gap-2">
-                            <button
-                              onClick={() => onEditar(obrigacao)}
-                              className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
-                              title="Editar"
-                            >
-                              <Edit size={18} />
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (confirm(`Tem certeza que deseja excluir "${obrigacao.titulo}"?`)) {
-                                  onDeletar(obrigacao.id);
-                                }
-                              }}
-                              className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
-                              title="Excluir"
-                            >
-                              <Trash2 size={18} />
-                            </button>
+                            {!isEventoVirtual(obrigacao) && (
+                              <>
+                                <button
+                                  onClick={() => onEditar(obrigacao)}
+                                  className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
+                                  title="Editar"
+                                >
+                                  <Edit size={18} />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    if (confirm(`Tem certeza que deseja excluir "${obrigacao.titulo}"?`)) {
+                                      onDeletar(obrigacao.id);
+                                    }
+                                  }}
+                                  className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                                  title="Excluir"
+                                >
+                                  <Trash2 size={18} />
+                                </button>
+                              </>
+                            )}
+                            {isEventoVirtual(obrigacao) && (
+                              <div className="px-3 py-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                                <span className="text-xs text-purple-700 dark:text-purple-300 font-medium">
+                                  ⏱️ Esta ocorrência será criada automaticamente
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
