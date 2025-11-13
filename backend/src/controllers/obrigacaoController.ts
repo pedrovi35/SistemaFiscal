@@ -77,6 +77,63 @@ export class ObrigacaoController {
       
       const dados = req.body;
 
+      // VALIDAÇÕES PREDITIVAS E CORRETIVAS
+      console.log('🔍 Iniciando validações preditivas...');
+      
+      // Validar campos obrigatórios
+      if (!dados.titulo || dados.titulo.trim() === '') {
+        console.error('❌ Validação falhou: título é obrigatório');
+        res.status(400).json({ erro: 'Título é obrigatório' });
+        return;
+      }
+
+      if (!dados.dataVencimento) {
+        console.error('❌ Validação falhou: data de vencimento é obrigatória');
+        res.status(400).json({ erro: 'Data de vencimento é obrigatória' });
+        return;
+      }
+
+      if (!dados.tipo) {
+        console.error('❌ Validação falhou: tipo é obrigatório');
+        res.status(400).json({ erro: 'Tipo é obrigatório' });
+        return;
+      }
+
+      if (!dados.status) {
+        console.error('❌ Validação falhou: status é obrigatório');
+        res.status(400).json({ erro: 'Status é obrigatório' });
+        return;
+      }
+
+      // Validar formato de data
+      try {
+        const dataTeste = new Date(dados.dataVencimento);
+        if (isNaN(dataTeste.getTime())) {
+          throw new Error('Data inválida');
+        }
+      } catch (dateError) {
+        console.error('❌ Validação falhou: formato de data inválido');
+        res.status(400).json({ erro: 'Formato de data inválido. Use o formato yyyy-MM-dd' });
+        return;
+      }
+
+      // Normalizar e limpar dados (manutenção corretiva)
+      dados.titulo = (dados.titulo || '').trim();
+      dados.descricao = (dados.descricao || '').trim() || null;
+      dados.empresa = (dados.empresa || '').trim() || null;
+      dados.responsavel = (dados.responsavel || '').trim() || null;
+      dados.cliente = (dados.cliente || '').trim() || null;
+      
+      // Garantir que tipo e status são strings válidas
+      if (typeof dados.tipo !== 'string') {
+        dados.tipo = String(dados.tipo);
+      }
+      if (typeof dados.status !== 'string') {
+        dados.status = String(dados.status);
+      }
+
+      console.log('✅ Validações passaram');
+
       // Validar recorrência se existir
       if (dados.recorrencia) {
         console.log('🔄 Validando recorrência...');
@@ -141,9 +198,34 @@ export class ObrigacaoController {
       console.error('📋 Stack:', error.stack);
       console.error('📋 Código:', error.code);
       console.error('📋 Detalhes completos:', error);
-      res.status(500).json({ 
-        erro: 'Erro ao criar obrigação',
-        detalhes: process.env.NODE_ENV === 'development' ? error.message : undefined
+      
+      // Mensagens de erro mais específicas baseadas no tipo de erro
+      let mensagemErro = 'Erro ao criar obrigação';
+      let statusCode = 500;
+      
+      if (error.message) {
+        // Se a mensagem já é específica (vinda do model), usar ela
+        if (error.message.includes('obrigatório') || 
+            error.message.includes('inválido') || 
+            error.message.includes('formato')) {
+          mensagemErro = error.message;
+          statusCode = 400;
+        } else if (error.message.includes('constraint') || 
+                   error.message.includes('chave estrangeira')) {
+          mensagemErro = error.message;
+          statusCode = 400;
+        } else if (error.message.includes('não encontrada')) {
+          mensagemErro = error.message;
+          statusCode = 500;
+        } else {
+          mensagemErro = error.message;
+        }
+      }
+      
+      res.status(statusCode).json({ 
+        erro: mensagemErro,
+        detalhes: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        codigo: error.code || undefined
       });
     }
   }

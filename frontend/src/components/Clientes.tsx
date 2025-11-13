@@ -61,8 +61,14 @@ const Clientes: React.FC<ClientesProps> = ({ clientes: propClientes }) => {
 	}, [propClientes]);
 
 	const lista = useMemo(() => {
+		if (!busca) return clientes;
 		const q = busca.toLowerCase();
-		return clientes.filter(c => c.nome.toLowerCase().includes(q) || (c.cnpj && c.cnpj.replace(/\D/g, '').includes(q.replace(/\D/g, ''))));
+		return clientes.filter(c => {
+			const nome = (c?.nome || '').toLowerCase();
+			const cnpj = c?.cnpj ? c.cnpj.replace(/\D/g, '') : '';
+			const buscaLimpa = q.replace(/\D/g, '');
+			return nome.includes(q) || (cnpj && cnpj.includes(buscaLimpa));
+		});
 	}, [clientes, busca]);
 
 	const abrirModalNovo = () => {

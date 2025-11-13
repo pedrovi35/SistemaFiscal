@@ -68,12 +68,36 @@ export class ObrigacaoModel {
       console.log('🔍 Query de criação:', query);
       console.log('📋 Valores:', valores);
 
-      const result = await db.get(query, valores);
+      let result;
+      try {
+        result = await db.get(query, valores);
+      } catch (dbError: any) {
+        console.error('❌ Erro ao executar query:', dbError);
+        console.error('📋 Código do erro:', dbError.code);
+        console.error('📋 Mensagem:', dbError.message);
+        
+        // Mensagens de erro mais específicas
+        if (dbError.code === '23505') { // Unique violation
+          throw new Error('Violação de constraint única. Verifique se já existe uma obrigação com os mesmos dados.');
+        } else if (dbError.code === '23502') { // NOT NULL violation
+          throw new Error('Campo obrigatório não fornecido ou nulo.');
+        } else if (dbError.code === '23503') { // Foreign key violation
+          throw new Error('Violação de chave estrangeira. Verifique se o cliente existe.');
+        } else if (dbError.code === '42P01') { // Table doesn't exist
+          throw new Error('Tabela obrigacoes não encontrada no banco de dados.');
+        } else if (dbError.message) {
+          throw new Error(`Erro no banco de dados: ${dbError.message}`);
+        } else {
+          throw new Error('Erro desconhecido ao criar obrigação no banco de dados.');
+        }
+      }
 
       const id = result?.id;
 
       if (!id) {
-        throw new Error('Erro ao criar obrigação: ID não retornado');
+        console.error('❌ ID não retornado após inserção');
+        console.error('📋 Resultado:', result);
+        throw new Error('Erro ao criar obrigação: ID não retornado após inserção');
       }
 
       // Salvar recorrência se existir
