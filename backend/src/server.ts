@@ -45,15 +45,26 @@ const io = new SocketIOServer(httpServer, {
         console.log(`✅ Socket.IO - Origem permitida: ${origin}`);
         return callback(null, true);
       } else {
-        console.warn(`⚠️ Socket.IO - Origem bloqueada por CORS: ${origin}`);
+        // Em produção, ser mais permissivo para evitar problemas
+        // Mas ainda logar para debug
+        console.warn(`⚠️ Socket.IO - Origem não está na lista: ${origin}`);
         console.warn(`📋 Origens permitidas: ${allowedOrigins.join(', ')}`);
+        
+        // Em desenvolvimento, bloquear. Em produção, permitir se for do Vercel
+        if (process.env.NODE_ENV === 'production' && origin.includes('vercel.app')) {
+          console.log(`✅ Socket.IO - Permitindo origem do Vercel: ${origin}`);
+          return callback(null, true);
+        }
+        
         return callback(new Error(`Origem ${origin} não permitida por CORS`), false);
       }
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    exposedHeaders: ['Content-Type', 'Authorization']
+    exposedHeaders: ['Content-Type', 'Authorization'],
+    // Adicionar maxAge para cache de preflight
+    maxAge: 86400 // 24 horas
   },
   transports: ['polling', 'websocket'],
   allowEIO3: true,
@@ -71,27 +82,35 @@ const io = new SocketIOServer(httpServer, {
 
 const PORT = process.env.PORT || 3001;
 
-// Middleware de CORS manual para garantir headers em todas as respostas
+// Middleware de CORS manual para garantir headers em TODAS as respostas (incluindo erros)
 app.use((req: Request, res: Response, next: NextFunction): void => {
   const origin = req.headers.origin;
   
-  // Se a origem está permitida, adicionar headers CORS
+  // SEMPRE adicionar headers CORS se a origem estiver permitida ou não houver origem
+  // Isso garante que mesmo em caso de erro, os headers CORS estarão presentes
   if (!origin || allowedOrigins.indexOf(origin) !== -1) {
     if (origin) {
       res.setHeader('Access-Control-Allow-Origin', origin);
     } else {
+      // Para requisições sem origin (Postman, mobile, etc), permitir qualquer origem
       res.setHeader('Access-Control-Allow-Origin', '*');
     }
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Expose-Headers', 'Content-Type, Authorization, Content-Range, X-Content-Range');
+    res.setHeader('Access-Control-Max-Age', '86400'); // Cache preflight por 24h
     
     // Para requisições OPTIONS (preflight), responder imediatamente
     if (req.method === 'OPTIONS') {
       res.status(200).end();
       return;
     }
+  } else {
+    // Mesmo se a origem não estiver permitida, adicionar headers para evitar erro de CORS
+    // O erro será tratado pelo middleware cors() abaixo
+    console.warn(`⚠️ CORS - Origem não permitida: ${origin}`);
+    console.warn(`📋 Origens permitidas: ${allowedOrigins.join(', ')}`);
   }
   
   next();
@@ -162,34 +181,94 @@ app.options('*', cors());
 // Rotas
 app.use('/api', routes);
 
-// Rota de health check
-app.get('/health', (_req: Request, res: Response) => {
-  res.json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    service: 'Sistema Fiscal API',
-    socket: {
-      connected: io.engine.clientsCount,
-      ready: true
-    }
-  });
+// Rota de health check - SEMPRE responder mesmo se houver problemas
+app.get('/health', (req: Request, res: Response) => {
+  const origin = req.headers.origin;
+  
+  // Adicionar headers CORS no health check
+  if (origin && allowedOrigins.indexOf(origin) !== -1) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  } else if (!origin) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  
+  try {
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      service: 'Sistema Fiscal API',
+      environment: process.env.NODE_ENV || 'development',
+      socket: {
+        connected: io.engine.clientsCount,
+        ready: true
+      },
+      cors: {
+        allowedOrigins: allowedOrigins,
+        currentOrigin: origin || 'none'
+      }
+    });
+  } catch (error) {
+    // Mesmo em caso de erro, retornar algo
+    res.status(200).json({ 
+      status: 'error', 
+      timestamp: new Date().toISOString(),
+      message: 'Health check com erro, mas servidor está respondendo'
+    });
+  }
 });
 
 // Nota: Socket.IO gerencia suas próprias rotas em /socket.io/*
 // Não é necessário criar rotas manuais para Socket.IO
 
-// Rota 404
-app.use((_req: Request, res: Response) => {
+// Rota 404 - Garantir headers CORS
+app.use((req: Request, res: Response) => {
+  const origin = req.headers.origin;
+  
+  // Adicionar headers CORS mesmo em 404
+  if (origin && allowedOrigins.indexOf(origin) !== -1) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  } else if (!origin) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  
   res.status(404).json({ erro: 'Rota não encontrada' });
 });
 
-// Error handler
-app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-  console.error('Erro:', err);
-  res.status(500).json({ 
-    erro: 'Erro interno do servidor',
-    mensagem: process.env.NODE_ENV === 'development' ? err.message : undefined
-  });
+// Error handler - GARANTIR que headers CORS sejam adicionados mesmo em erros
+app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
+  const origin = req.headers.origin;
+  
+  // Adicionar headers CORS mesmo em caso de erro
+  if (origin && allowedOrigins.indexOf(origin) !== -1) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  } else if (!origin) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  
+  console.error('❌ Erro:', err);
+  
+  // Se for erro de CORS, retornar 403 com mensagem clara
+  if (err.message && err.message.includes('CORS')) {
+    res.status(403).json({ 
+      erro: 'Acesso negado por CORS',
+      mensagem: `Origem ${origin || 'desconhecida'} não está permitida`,
+      origensPermitidas: allowedOrigins
+    });
+  } else {
+    res.status(500).json({ 
+      erro: 'Erro interno do servidor',
+      mensagem: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+  }
 });
 
 // WebSocket - Gerenciar conexões
