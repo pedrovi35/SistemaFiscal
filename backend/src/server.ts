@@ -44,20 +44,26 @@ const io = new SocketIOServer(httpServer, {
       if (allowedOrigins.indexOf(origin) !== -1) {
         console.log(`✅ Socket.IO - Origem permitida: ${origin}`);
         return callback(null, true);
-      } else {
-        // Em produção, ser mais permissivo para evitar problemas
-        // Mas ainda logar para debug
-        console.warn(`⚠️ Socket.IO - Origem não está na lista: ${origin}`);
-        console.warn(`📋 Origens permitidas: ${allowedOrigins.join(', ')}`);
-        
-        // Em desenvolvimento, bloquear. Em produção, permitir se for do Vercel
-        if (process.env.NODE_ENV === 'production' && origin.includes('vercel.app')) {
+      }
+      
+      // Em produção, ser mais permissivo para evitar problemas
+      // Mas ainda logar para debug
+      console.warn(`⚠️ Socket.IO - Origem não está na lista: ${origin}`);
+      console.warn(`📋 Origens permitidas: ${allowedOrigins.join(', ')}`);
+      
+      // Em produção, permitir origens do Vercel e outras origens para evitar bloqueios
+      if (process.env.NODE_ENV === 'production') {
+        if (origin.includes('vercel.app')) {
           console.log(`✅ Socket.IO - Permitindo origem do Vercel: ${origin}`);
           return callback(null, true);
         }
-        
-        return callback(new Error(`Origem ${origin} não permitida por CORS`), false);
+        // Em produção, ser permissivo para evitar problemas de CORS
+        console.log(`✅ Socket.IO - Permitindo origem em produção: ${origin}`);
+        return callback(null, true);
       }
+      
+      // Em desenvolvimento, bloquear origens não permitidas
+      return callback(new Error(`Origem ${origin} não permitida por CORS`), false);
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     credentials: true,
@@ -83,18 +89,28 @@ const io = new SocketIOServer(httpServer, {
 const PORT = process.env.PORT || 3001;
 
 // Middleware de CORS manual para garantir headers em TODAS as respostas (incluindo erros)
+// Este middleware deve ser o PRIMEIRO para garantir que headers CORS estejam sempre presentes
 app.use((req: Request, res: Response, next: NextFunction): void => {
   const origin = req.headers.origin;
   
-  // SEMPRE adicionar headers CORS se a origem estiver permitida ou não houver origem
-  // Isso garante que mesmo em caso de erro, os headers CORS estarão presentes
-  if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-    if (origin) {
+  // Em produção, ser mais permissivo com origens do Vercel
+  const isVercelOrigin = origin && origin.includes('vercel.app');
+  const isAllowedOrigin = !origin || allowedOrigins.indexOf(origin) !== -1;
+  const shouldAllow = isAllowedOrigin || (process.env.NODE_ENV === 'production' && isVercelOrigin);
+  
+  // SEMPRE adicionar headers CORS para evitar erro de CORS quando servidor está com problema
+  // Isso é crítico para evitar que o navegador bloqueie antes mesmo de chegar ao servidor
+  if (shouldAllow || process.env.NODE_ENV === 'production') {
+    if (origin && (isAllowedOrigin || isVercelOrigin)) {
       res.setHeader('Access-Control-Allow-Origin', origin);
-    } else {
+    } else if (!origin) {
       // Para requisições sem origin (Postman, mobile, etc), permitir qualquer origem
       res.setHeader('Access-Control-Allow-Origin', '*');
+    } else if (process.env.NODE_ENV === 'production') {
+      // Em produção, permitir origem mesmo se não estiver na lista (para evitar bloqueios)
+      res.setHeader('Access-Control-Allow-Origin', origin || '*');
     }
+    
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -107,10 +123,19 @@ app.use((req: Request, res: Response, next: NextFunction): void => {
       return;
     }
   } else {
-    // Mesmo se a origem não estiver permitida, adicionar headers para evitar erro de CORS
-    // O erro será tratado pelo middleware cors() abaixo
-    console.warn(`⚠️ CORS - Origem não permitida: ${origin}`);
+    // Em desenvolvimento, logar mas ainda adicionar headers para evitar erro de CORS
+    console.warn(`⚠️ CORS - Origem não na lista: ${origin}`);
     console.warn(`📋 Origens permitidas: ${allowedOrigins.join(', ')}`);
+    
+    // Mesmo assim, adicionar headers para evitar erro de CORS no navegador
+    if (origin) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    } else {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+    }
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
   
   next();
@@ -135,14 +160,28 @@ app.use(cors({
     // Log para debug
     console.log(`🔍 CORS - Verificando origem: ${origin}`);
     
+    // Verificar se está na lista permitida
     if (allowedOrigins.indexOf(origin) !== -1) {
       console.log(`✅ CORS - Origem permitida: ${origin}`);
       return callback(null, true);
-    } else {
+    }
+    
+    // Em produção, ser mais permissivo com origens do Vercel
+    if (process.env.NODE_ENV === 'production' && origin.includes('vercel.app')) {
+      console.log(`✅ CORS - Permitindo origem do Vercel em produção: ${origin}`);
+      return callback(null, true);
+    }
+    
+    // Em desenvolvimento, bloquear origens não permitidas
+    if (process.env.NODE_ENV === 'development') {
       console.warn(`⚠️ CORS - Origem bloqueada: ${origin}`);
       console.warn(`📋 Origens permitidas: ${allowedOrigins.join(', ')}`);
       return callback(new Error(`Origem ${origin} não permitida por CORS`), false);
     }
+    
+    // Em produção, ser permissivo para evitar problemas
+    console.log(`✅ CORS - Permitindo origem em produção: ${origin}`);
+    return callback(null, true);
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   credentials: true,
@@ -185,15 +224,22 @@ app.use('/api', routes);
 app.get('/health', (req: Request, res: Response) => {
   const origin = req.headers.origin;
   
-  // Adicionar headers CORS no health check
-  if (origin && allowedOrigins.indexOf(origin) !== -1) {
+  // SEMPRE adicionar headers CORS no health check (crítico para diagnóstico)
+  const isVercelOrigin = origin && origin.includes('vercel.app');
+  const isAllowedOrigin = !origin || allowedOrigins.indexOf(origin) !== -1;
+  
+  if (origin && (isAllowedOrigin || isVercelOrigin || process.env.NODE_ENV === 'production')) {
     res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
   } else if (!origin) {
     res.setHeader('Access-Control-Allow-Origin', '*');
+  } else {
+    // Mesmo se não estiver na lista, adicionar header para evitar erro de CORS
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
   }
+  
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   
   try {
     res.json({ 
@@ -227,15 +273,22 @@ app.get('/health', (req: Request, res: Response) => {
 app.use((req: Request, res: Response) => {
   const origin = req.headers.origin;
   
-  // Adicionar headers CORS mesmo em 404
-  if (origin && allowedOrigins.indexOf(origin) !== -1) {
+  // SEMPRE adicionar headers CORS mesmo em 404
+  const isVercelOrigin = origin && origin.includes('vercel.app');
+  const isAllowedOrigin = !origin || allowedOrigins.indexOf(origin) !== -1;
+  
+  if (origin && (isAllowedOrigin || isVercelOrigin || process.env.NODE_ENV === 'production')) {
     res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
   } else if (!origin) {
     res.setHeader('Access-Control-Allow-Origin', '*');
+  } else {
+    // Mesmo se não estiver na lista, adicionar header para evitar erro de CORS
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
   }
+  
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   
   res.status(404).json({ erro: 'Rota não encontrada' });
 });
@@ -244,15 +297,22 @@ app.use((req: Request, res: Response) => {
 app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
   const origin = req.headers.origin;
   
-  // Adicionar headers CORS mesmo em caso de erro
-  if (origin && allowedOrigins.indexOf(origin) !== -1) {
+  // SEMPRE adicionar headers CORS mesmo em caso de erro (crítico!)
+  const isVercelOrigin = origin && origin.includes('vercel.app');
+  const isAllowedOrigin = !origin || allowedOrigins.indexOf(origin) !== -1;
+  
+  if (origin && (isAllowedOrigin || isVercelOrigin || process.env.NODE_ENV === 'production')) {
     res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
   } else if (!origin) {
     res.setHeader('Access-Control-Allow-Origin', '*');
+  } else {
+    // Mesmo se não estiver na lista, adicionar header para evitar erro de CORS
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
   }
+  
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   
   console.error('❌ Erro:', err);
   
