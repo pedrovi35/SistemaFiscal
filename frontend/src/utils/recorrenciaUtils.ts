@@ -139,7 +139,9 @@ export function gerarTodosEventosRecorrentes(
  * @returns true se for virtual
  */
 export function isEventoVirtual(obrigacao: Obrigacao): boolean {
-  return obrigacao.id.includes('-recorrencia-') || obrigacao.criadoEm === '';
+  // Garantir que id seja string (pode vir como número do backend)
+  const idString = String(obrigacao.id || '');
+  return idString.includes('-recorrencia-') || obrigacao.criadoEm === '';
 }
 
 /**
@@ -148,8 +150,11 @@ export function isEventoVirtual(obrigacao: Obrigacao): boolean {
  * @returns ID da obrigação original
  */
 export function getIdOriginal(obrigacao: Obrigacao): string {
+  // Garantir que id seja string (pode vir como número do backend)
+  const idString = String(obrigacao.id || '');
+  
   if (isEventoVirtual(obrigacao)) {
-    return obrigacao.id.split('-recorrencia-')[0];
+    return idString.split('-recorrencia-')[0];
   }
-  return obrigacao.id;
+  return idString;
 }

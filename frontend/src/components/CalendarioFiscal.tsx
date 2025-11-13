@@ -192,8 +192,10 @@ const CalendarioFiscal: React.FC<CalendarioFiscalProps> = ({
       
       if (confirmar) {
         // Encontrar a obrigação original
-        const idOriginal = obrigacao.id.split('-recorrencia-')[0];
-        const obrigacaoOriginal = obrigacoes.find(o => o.id === idOriginal);
+        // Garantir que id seja string (pode vir como número do backend)
+        const idString = String(obrigacao.id || '');
+        const idOriginal = idString.split('-recorrencia-')[0];
+        const obrigacaoOriginal = obrigacoes.find(o => String(o.id) === idOriginal);
         if (obrigacaoOriginal) {
           onEventClick(obrigacaoOriginal);
         }
