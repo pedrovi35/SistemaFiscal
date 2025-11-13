@@ -269,6 +269,50 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
   next();
 });
 
+// Middleware específico para /api - garantir CORS antes de processar
+app.use('/api', (req: Request, res: Response, next: NextFunction): void => {
+  const origin = req.headers.origin;
+  
+  // SEMPRE adicionar headers CORS para API REST (crítico para evitar erro de CORS com 502)
+  if (process.env.NODE_ENV === 'production') {
+    // Em produção, sempre permitir a origem da requisição
+    if (origin) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    } else {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+    }
+  } else if (origin) {
+    // Em desenvolvimento, verificar se está na lista ou é conhecida
+    if (origin.includes('vercel.app') || 
+        origin.includes('localhost') || 
+        origin.includes('127.0.0.1') ||
+        allowedOrigins.indexOf(origin) !== -1) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    } else {
+      // Mesmo em desenvolvimento, permitir para evitar erro de CORS
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    }
+  } else {
+    // Sem origin, permitir qualquer origem
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  
+  // Sempre adicionar todos os headers CORS necessários
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Type, Authorization, Content-Range, X-Content-Range');
+  res.setHeader('Access-Control-Max-Age', '86400');
+  
+  // Para requisições OPTIONS (preflight), responder imediatamente
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+  
+  next();
+});
+
 // Tratar requisições OPTIONS (preflight)
 app.options('*', cors());
 

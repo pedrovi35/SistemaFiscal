@@ -170,8 +170,8 @@ const ObrigacoesDoDia: React.FC<ObrigacoesDoDiaProps> = ({
                                   👔 {obrigacao.responsavel}
                                 </span>
                               )}
-                              <span className={`badge badge-${obrigacao.tipo.toLowerCase()}`}>
-                                {obrigacao.tipo}
+                              <span className={`badge badge-${obrigacao.tipo ? obrigacao.tipo.toLowerCase() : 'outro'}`}>
+                                {obrigacao.tipo || 'OUTRO'}
                               </span>
                             </div>
 
