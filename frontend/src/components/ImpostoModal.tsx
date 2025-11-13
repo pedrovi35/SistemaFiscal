@@ -25,12 +25,15 @@ interface ImpostoModalProps {
 
 const ImpostoModal: React.FC<ImpostoModalProps> = ({ imposto, onSave, onClose, clientes = [] }) => {
 	// Função helper para converter data ISO para formato yyyy-MM-dd
-	const formatarDataParaInput = (data: string | undefined): string => {
+	const formatarDataParaInput = (data: string | Date | null | undefined): string => {
 		if (!data) return '';
+		// Converter para string se for Date
+		const dataString = typeof data === 'string' ? data : (data instanceof Date ? data.toISOString() : String(data));
+		if (!dataString || typeof dataString !== 'string') return '';
 		// Se já está no formato correto (yyyy-MM-dd), retorna
-		if (/^\d{4}-\d{2}-\d{2}$/.test(data)) return data;
+		if (/^\d{4}-\d{2}-\d{2}$/.test(dataString)) return dataString;
 		// Se está no formato ISO (com hora), extrai apenas a data
-		return data.split('T')[0];
+		return dataString.split('T')[0];
 	};
 
 	const [mostrarRecorrencia, setMostrarRecorrencia] = useState(!!imposto?.recorrencia);

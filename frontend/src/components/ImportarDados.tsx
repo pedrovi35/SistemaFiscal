@@ -35,16 +35,32 @@ const ImportarDados: React.FC<ImportarDadosProps> = ({ onClose, onImportComplete
 			const reader = new FileReader();
 			reader.onload = (e) => {
 				try {
-					const content = e.target?.result as string;
+					const content = e.target?.result;
+					
+					// Validar que content é string
+					if (typeof content !== 'string') {
+						setMensagem({ tipo: 'erro', texto: 'Erro ao ler arquivo. Formato inválido.' });
+						return;
+					}
+					
 					let dados;
 
 					if (arquivo.name.endsWith('.json')) {
 						dados = JSON.parse(content);
 						setMensagem({ tipo: 'sucesso', texto: `✓ Importados ${Array.isArray(dados) ? dados.length : 0} registros!` });
 					} else if (arquivo.name.endsWith('.csv')) {
+						if (!content || typeof content !== 'string') {
+							setMensagem({ tipo: 'erro', texto: 'Erro ao processar CSV. Conteúdo inválido.' });
+							return;
+						}
 						const linhas = content.split('\n').filter(l => l.trim());
+						if (linhas.length === 0) {
+							setMensagem({ tipo: 'erro', texto: 'Arquivo CSV vazio ou inválido.' });
+							return;
+						}
 						const cabecalhos = linhas[0].split(',').map(h => h.replace(/"/g, ''));
 						dados = linhas.slice(1).map(linha => {
+							if (!linha || typeof linha !== 'string') return {};
 							const valores = linha.split(',');
 							const obj: any = {};
 							cabecalhos.forEach((h, i) => {

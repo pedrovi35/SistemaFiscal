@@ -153,8 +153,15 @@ export function getIdOriginal(obrigacao: Obrigacao): string {
   // Garantir que id seja string (pode vir como número do backend)
   const idString = String(obrigacao.id || '');
   
+  if (!idString || typeof idString !== 'string') {
+    return '';
+  }
+  
   if (isEventoVirtual(obrigacao)) {
-    return idString.split('-recorrencia-')[0];
+    // Validar que a string contém o separador antes de usar split
+    if (idString.includes('-recorrencia-')) {
+      return idString.split('-recorrencia-')[0];
+    }
   }
   return idString;
 }

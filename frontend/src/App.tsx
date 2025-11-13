@@ -277,10 +277,11 @@ function AppContent() {
   };
 
   // Atualizar data por drag & drop
-  const atualizarData = async (obrigacaoId: string, novaData: string) => {
+  const atualizarData = async (obrigacaoId: string, novaData: string | Date) => {
     try {
       // Garantir formato yyyy-MM-dd
-      const dataFormatada = novaData.includes('T') ? novaData.split('T')[0] : novaData;
+      const dataString = typeof novaData === 'string' ? novaData : (novaData instanceof Date ? novaData.toISOString() : String(novaData));
+      const dataFormatada = dataString && typeof dataString === 'string' && dataString.includes('T') ? dataString.split('T')[0] : dataString;
       await obrigacoesApi.atualizar(obrigacaoId, { dataVencimento: dataFormatada });
       adicionarNotificacao('sucesso', '✓ Data atualizada!');
       await carregarObrigacoes();

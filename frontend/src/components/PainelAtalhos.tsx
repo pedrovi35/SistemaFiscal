@@ -88,14 +88,16 @@ const PainelAtalhos: React.FC = () => {
                           {atalho.descricao}
                         </span>
                         <div className="flex gap-1">
-                          {atalho.tecla.split(' + ').map((tecla, i) => (
-                            <React.Fragment key={i}>
-                              {i > 0 && <span className="text-gray-400 mx-1">+</span>}
-                              <kbd className="px-3 py-1.5 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg text-xs font-semibold text-gray-700 dark:text-gray-300 shadow-sm">
-                                {tecla}
-                              </kbd>
-                            </React.Fragment>
-                          ))}
+                          {(typeof atalho.tecla === 'string' ? atalho.tecla : String(atalho.tecla || ''))
+                            .split(' + ')
+                            .map((tecla, i) => (
+                              <React.Fragment key={i}>
+                                {i > 0 && <span className="text-gray-400 mx-1">+</span>}
+                                <kbd className="px-3 py-1.5 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg text-xs font-semibold text-gray-700 dark:text-gray-300 shadow-sm">
+                                  {tecla}
+                                </kbd>
+                              </React.Fragment>
+                            ))}
                         </div>
                       </div>
                     ))}

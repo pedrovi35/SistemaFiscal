@@ -139,12 +139,15 @@ const CalendarioFiscal: React.FC<CalendarioFiscalProps> = ({
   };
 
   // Função helper para formatar data para formato ISO correto (yyyy-MM-dd)
-  const formatarDataParaCalendario = (data: string): string => {
+  const formatarDataParaCalendario = (data: string | Date | null | undefined): string => {
     if (!data) return '';
+    // Converter para string se for Date
+    const dataString = typeof data === 'string' ? data : (data instanceof Date ? data.toISOString() : String(data));
+    if (!dataString || typeof dataString !== 'string') return '';
     // Se já está no formato correto (yyyy-MM-dd), retorna
-    if (/^\d{4}-\d{2}-\d{2}$/.test(data)) return data;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dataString)) return dataString;
     // Se está no formato ISO (com hora), extrai apenas a data
-    return data.split('T')[0];
+    return dataString.split('T')[0];
   };
 
   // Converter obrigações para eventos do FullCalendar (incluindo recorrências futuras)
@@ -194,7 +197,9 @@ const CalendarioFiscal: React.FC<CalendarioFiscalProps> = ({
         // Encontrar a obrigação original
         // Garantir que id seja string (pode vir como número do backend)
         const idString = String(obrigacao.id || '');
-        const idOriginal = idString.split('-recorrencia-')[0];
+        const idOriginal = idString && typeof idString === 'string' && idString.includes('-recorrencia-') 
+          ? idString.split('-recorrencia-')[0] 
+          : idString;
         const obrigacaoOriginal = obrigacoes.find(o => String(o.id) === idOriginal);
         if (obrigacaoOriginal) {
           onEventClick(obrigacaoOriginal);

@@ -49,35 +49,51 @@ class SocketService {
     });
 
     this.socket.on('connect_error', (error) => {
-      const errorMessage = error.message || String(error);
+      const errorMessage = error?.message || String(error || 'Erro desconhecido');
+      const errorType = error?.type || 'unknown';
+      
       console.error('❌ Erro de conexão Socket.IO:', errorMessage);
+      console.error('📋 Tipo de erro:', errorType);
       
       // Tratamento específico para diferentes tipos de erro
-      if (errorMessage.includes('502') || errorMessage.includes('Bad Gateway')) {
+      if (errorMessage.includes('502') || errorMessage.includes('Bad Gateway') || errorType === 'TransportError') {
         console.log('⏳ Servidor está iniciando (cold start do Render)...');
         console.log('⏳ Aguarde até 60 segundos para o servidor ficar online');
         console.log('💡 Dica: Configure um ping automático em https://uptimerobot.com para manter o servidor ativo');
-      } else if (errorMessage.includes('CORS') || errorMessage.includes('Access-Control-Allow-Origin')) {
+        // Não fazer nada, deixar o sistema tentar reconectar automaticamente
+      } else if (errorMessage.includes('CORS') || errorMessage.includes('Access-Control-Allow-Origin') || errorMessage.includes('blocked by CORS')) {
         console.error('🚫 Erro de CORS detectado');
         console.error('📋 Verifique se:');
         console.error('   1. A URL do backend está correta');
         console.error('   2. O backend está configurado para aceitar requisições do Vercel');
         console.error('   3. A variável CORS_ORIGIN está configurada no Render');
         console.error(`   4. Origem atual: ${window.location.origin}`);
-      } else if (errorMessage.includes('timeout') || errorMessage.includes('ETIMEDOUT')) {
+        console.error(`   5. URL do Socket: ${SOCKET_URL}`);
+        // Tentar reconectar após um delay maior para CORS
+        setTimeout(() => {
+          if (this.socket && !this.socket.connected) {
+            console.log('🔄 Tentando reconectar após erro de CORS...');
+            this.socket.connect();
+          }
+        }, 10000);
+      } else if (errorMessage.includes('timeout') || errorMessage.includes('ETIMEDOUT') || errorType === 'TransportTimeoutError') {
         console.error('⏱️ Timeout na conexão');
         console.log('🔄 Aumentando tempo de espera...');
-      } else if (errorMessage.includes('Network Error') || errorMessage.includes('Failed to fetch')) {
+        // O sistema já tentará reconectar automaticamente
+      } else if (errorMessage.includes('Network Error') || errorMessage.includes('Failed to fetch') || errorMessage.includes('ERR_FAILED')) {
         console.error('🌐 Erro de rede');
         console.log('💡 Verifique sua conexão com a internet');
+        console.log(`💡 URL tentada: ${SOCKET_URL}`);
       } else {
         console.error('📋 Detalhes do erro:', {
           message: errorMessage,
+          type: errorType,
           error: error
         });
       }
       
-      console.log('🔄 Tentando reconectar automaticamente...');
+      // Não logar "Tentando reconectar" se já está tentando automaticamente
+      // O Socket.IO já faz isso automaticamente com as configurações de reconnection
     });
 
     this.socket.on('reconnect', (attemptNumber) => {
