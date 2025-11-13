@@ -95,7 +95,25 @@ export class ObrigacaoModel {
   // Listar todas
   async listarTodas(): Promise<Obrigacao[]> {
     try {
+      // Verificar se a tabela existe
+      console.log('🔍 Verificando se a tabela obrigacoes existe...');
+      const tableCheck = await db.all(`
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'obrigacoes'
+      `, []) as any[];
+      
+      if (tableCheck.length === 0) {
+        console.error('❌ Tabela obrigacoes não encontrada no banco de dados!');
+        throw new Error('Tabela obrigacoes não existe. Execute o script RECRIAR_BANCO_COMPLETO.sql no Supabase.');
+      }
+      
+      console.log('✅ Tabela obrigacoes encontrada');
+      console.log('🔍 Executando query: SELECT * FROM obrigacoes...');
+      
       const obrigacoes = await db.all('SELECT * FROM obrigacoes ORDER BY data_vencimento ASC', []) as any[];
+      console.log(`📊 ${obrigacoes.length} registros retornados do banco`);
 
       const resultados: Obrigacao[] = [];
       for (const o of obrigacoes) {
@@ -103,13 +121,19 @@ export class ObrigacaoModel {
           const mapped = await this.mapearObrigacao(o);
           resultados.push(mapped);
         } catch (mapError: any) {
-          console.error(`Erro ao mapear obrigação ID ${o.id}:`, mapError.message);
+          console.error(`❌ Erro ao mapear obrigação ID ${o.id}:`, mapError.message);
+          console.error('📋 Stack do erro de mapeamento:', mapError.stack);
           // Continua com as outras obrigações
         }
       }
+      console.log(`✅ ${resultados.length} obrigações mapeadas com sucesso`);
       return resultados;
     } catch (error: any) {
-      console.error('Erro ao listar obrigações:', error.message);
+      console.error('❌ Erro ao listar obrigações no model:');
+      console.error('📋 Mensagem:', error.message);
+      console.error('📋 Stack:', error.stack);
+      console.error('📋 Código:', error.code);
+      console.error('📋 Detalhes completos:', error);
       throw error;
     }
   }
@@ -561,6 +585,19 @@ export class ObrigacaoModel {
   // Buscar recorrência
   private async buscarRecorrencia(obrigacaoId: string): Promise<Recorrencia | undefined> {
     try {
+      // Verificar se a tabela existe antes de consultar
+      const tableCheck = await db.all(`
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'recorrencias'
+      `, []) as any[];
+      
+      if (tableCheck.length === 0) {
+        // Tabela não existe, retornar undefined sem erro
+        return undefined;
+      }
+      
       const rec = await db.get('SELECT * FROM recorrencias WHERE obrigacao_id = ?', [obrigacaoId]) as any;
 
       if (!rec) return undefined;
@@ -575,9 +612,9 @@ export class ObrigacaoModel {
         diaGeracao: rec.dia_geracao || rec.diaGeracao || 1,
         ultimaGeracao: rec.ultima_geracao || rec.ultimaGeracao || undefined
       };
-    } catch (error) {
+    } catch (error: any) {
       // Se tabela recorrencias não existir ou houver erro, retorna undefined
-      console.warn('Aviso ao buscar recorrência:', error);
+      console.warn(`⚠️ Aviso ao buscar recorrência para obrigação ${obrigacaoId}:`, error.message);
       return undefined;
     }
   }
@@ -585,7 +622,15 @@ export class ObrigacaoModel {
   // Mapear obrigação do banco
   private async mapearObrigacao(row: any): Promise<Obrigacao> {
     try {
-      const recorrencia = await this.buscarRecorrencia(row.id).catch(() => undefined);
+      // Buscar recorrência de forma segura
+      let recorrencia: Recorrencia | undefined;
+      try {
+        recorrencia = await this.buscarRecorrencia(row.id);
+      } catch (recError: any) {
+        // Se falhar ao buscar recorrência, apenas logar e continuar
+        console.warn(`⚠️ Erro ao buscar recorrência para obrigação ${row.id}:`, recError.message);
+        recorrencia = undefined;
+      }
       
       return {
         id: row.id,
@@ -599,15 +644,18 @@ export class ObrigacaoModel {
         empresa: row.empresa || undefined,
         responsavel: row.responsavel || undefined,
         recorrencia: recorrencia,
-        ajusteDataUtil: row.ajuste_data_util === true || row.ajusteDataUtil === 1,
+        ajusteDataUtil: row.ajuste_data_util === true || row.ajusteDataUtil === 1 || row.ajuste_data_util === 'true',
         preferenciaAjuste: row.preferencia_ajuste || row.preferenciaAjuste || 'proximo',
         cor: row.cor || undefined,
         criadoEm: row.created_at || row.criadoEm,
         atualizadoEm: row.updated_at || row.atualizadoEm,
         criadoPor: row.criadoPor || undefined
       };
-    } catch (error) {
-      console.error('Erro ao mapear obrigação:', error);
+    } catch (error: any) {
+      console.error('❌ Erro ao mapear obrigação:');
+      console.error('📋 Row data:', JSON.stringify(row, null, 2));
+      console.error('📋 Mensagem:', error.message);
+      console.error('📋 Stack:', error.stack);
       throw error;
     }
   }
