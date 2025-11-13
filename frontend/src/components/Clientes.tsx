@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Search, Plus, Edit2, Mail, Phone, Building2 } from 'lucide-react';
 import ClienteModal from './ClienteModal';
+import { clientesApi } from '../services/api';
 
 export type RegimeTributario = 'MEI' | 'Simples Nacional' | 'Lucro Presumido' | 'Lucro Real';
 
@@ -25,15 +26,43 @@ const mockClientes: Cliente[] = [
 	{ id: '4', nome: 'Delta Corporate', cnpj: '66.777.888/0001-44', email: 'contato@delta.com', telefone: '(41) 8888-9999', ativo: true, regimeTributario: 'Lucro Real' },
 ];
 
-const Clientes: React.FC<ClientesProps> = ({ clientes: propClientes = mockClientes }) => {
-	const [clientes, setClientes] = useState<Cliente[]>(propClientes);
+const Clientes: React.FC<ClientesProps> = ({ clientes: propClientes }) => {
+	const [clientes, setClientes] = useState<Cliente[]>(propClientes || []);
 	const [busca, setBusca] = useState('');
 	const [modalAberto, setModalAberto] = useState(false);
 	const [clienteSelecionado, setClienteSelecionado] = useState<Cliente | undefined>();
+	const [carregando, setCarregando] = useState(false);
+	const [erro, setErro] = useState<string | null>(null);
+
+	// Carregar clientes do backend ao montar o componente
+	useEffect(() => {
+		const carregarClientes = async () => {
+			// Se já recebeu clientes via props, não carrega do backend
+			if (propClientes && propClientes.length > 0) {
+				return;
+			}
+			
+			setCarregando(true);
+			setErro(null);
+			try {
+				const clientesBackend = await clientesApi.listarTodos();
+				setClientes(clientesBackend);
+			} catch (error: any) {
+				console.error('Erro ao carregar clientes:', error);
+				setErro(error?.message || 'Erro ao carregar clientes');
+				// Em caso de erro, usa os mockClientes como fallback
+				setClientes(mockClientes);
+			} finally {
+				setCarregando(false);
+			}
+		};
+
+		carregarClientes();
+	}, [propClientes]);
 
 	const lista = useMemo(() => {
 		const q = busca.toLowerCase();
-		return clientes.filter(c => c.nome.toLowerCase().includes(q) || c.cnpj.replace(/\D/g, '').includes(q.replace(/\D/g, '')));
+		return clientes.filter(c => c.nome.toLowerCase().includes(q) || (c.cnpj && c.cnpj.replace(/\D/g, '').includes(q.replace(/\D/g, ''))));
 	}, [clientes, busca]);
 
 	const abrirModalNovo = () => {
@@ -53,23 +82,25 @@ const Clientes: React.FC<ClientesProps> = ({ clientes: propClientes = mockClient
 
 	const salvarCliente = async (dados: Partial<Cliente>) => {
 		try {
+			setErro(null);
+			
 			if (clienteSelecionado?.id) {
-				// Atualizar cliente existente
-				setClientes(prev => prev.map(c => c.id === clienteSelecionado.id ? { ...c, ...dados } as Cliente : c));
+				// Atualizar cliente existente - NÃO salva novamente, apenas atualiza
+				const clienteAtualizado = await clientesApi.atualizar(clienteSelecionado.id, dados);
+				setClientes(prev => prev.map(c => c.id === clienteSelecionado.id ? clienteAtualizado : c));
 				alert('✓ Cliente atualizado com sucesso!');
 			} else {
-				// Criar novo cliente
-				const novoCliente: Cliente = {
-					...dados as Cliente,
-					id: Date.now().toString()
-				};
+				// Criar novo cliente - Salva no banco de dados
+				const novoCliente = await clientesApi.criar(dados);
 				setClientes(prev => [...prev, novoCliente]);
 				alert('✓ Cliente criado com sucesso!');
 			}
 			fecharModal();
-		} catch (error) {
+		} catch (error: any) {
 			console.error('Erro ao salvar cliente:', error);
-			alert('✗ Erro ao salvar cliente');
+			const mensagemErro = error?.response?.data?.erro || error?.message || 'Erro ao salvar cliente';
+			setErro(mensagemErro);
+			alert(`✗ ${mensagemErro}`);
 		}
 	};
 
@@ -79,12 +110,25 @@ const Clientes: React.FC<ClientesProps> = ({ clientes: propClientes = mockClient
 				<h2 className="text-xl font-bold">Clientes</h2>
 				<button onClick={abrirModalNovo} className="btn-primary inline-flex items-center gap-2"><Plus size={16} /> Novo Cliente</button>
 			</div>
+			
+			{erro && (
+				<div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400 text-sm">
+					{erro}
+				</div>
+			)}
+			
 			<div className="flex items-center gap-2 mb-4">
 				<div className="relative">
 					<Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
 					<input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por nome ou CNPJ" className="input-primary pl-9 w-80" />
 				</div>
 			</div>
+			
+			{carregando && (
+				<div className="text-center py-8 text-gray-500 dark:text-gray-400">
+					Carregando clientes...
+				</div>
+			)}
 			<div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700 -mx-2 sm:mx-0">
 				<table className="w-full text-xs sm:text-sm">
 					<thead className="bg-gray-50 dark:bg-gray-800">

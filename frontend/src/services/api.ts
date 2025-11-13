@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { Obrigacao, FiltroObrigacoes, Feriado, HistoricoAlteracao } from '../types';
+import { Cliente } from '../components/Clientes';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
@@ -88,6 +89,44 @@ export const feriadosApi = {
   ): Promise<{ dataOriginal: string; dataAjustada: string; ajustada: boolean }> => {
     const response = await api.post('/feriados/ajustar-data', { data, direcao });
     return response.data;
+  }
+};
+
+// ==================== CLIENTES ====================
+
+export const clientesApi = {
+  listarTodos: async (): Promise<Cliente[]> => {
+    const response = await api.get('/clientes');
+    return response.data;
+  },
+
+  listarAtivos: async (): Promise<Cliente[]> => {
+    const response = await api.get('/clientes/ativos');
+    return response.data;
+  },
+
+  buscarPorId: async (id: string): Promise<Cliente> => {
+    const response = await api.get(`/clientes/${id}`);
+    return response.data;
+  },
+
+  buscarPorCnpj: async (cnpj: string): Promise<Cliente> => {
+    const response = await api.get(`/clientes/cnpj/${cnpj}`);
+    return response.data;
+  },
+
+  criar: async (cliente: Partial<Cliente>): Promise<Cliente> => {
+    const response = await api.post('/clientes', cliente);
+    return response.data;
+  },
+
+  atualizar: async (id: string, dados: Partial<Cliente>): Promise<Cliente> => {
+    const response = await api.put(`/clientes/${id}`, dados);
+    return response.data;
+  },
+
+  deletar: async (id: string): Promise<void> => {
+    await api.delete(`/clientes/${id}`);
   }
 };
 
